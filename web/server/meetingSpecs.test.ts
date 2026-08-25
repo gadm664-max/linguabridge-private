@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultVoiceProfile, defaultVoiceRate, getLobbyInviteGuidance, getMuteControlLabel, lobbyReadinessCopy, meetingControlCopy, normalizeVoiceProfile, normalizeVoiceRate, supportedLanguages, supportedVoiceProfiles, supportedVoiceRates } from "@linguabridge/contracts/meetingSpecs";
+import { defaultVoiceProfile, defaultVoiceRate, getLiveTranscriptStatus, getLobbyInviteGuidance, getMuteControlLabel, liveTranscriptCopy, lobbyReadinessCopy, meetingControlCopy, normalizeVoiceProfile, normalizeVoiceRate, supportedLanguages, supportedVoiceProfiles, supportedVoiceRates } from "@linguabridge/contracts/meetingSpecs";
 
 describe("shared meeting specifications", () => {
   it("publishes the same supported language set used by web and mobile clients", () => {
@@ -32,5 +32,11 @@ describe("shared meeting specifications", () => {
   it("provides the same accessible labels for mute controls", () => {
     expect(getMuteControlLabel(false)).toBe(meetingControlCopy.audio.mute);
     expect(getMuteControlLabel(true)).toBe(meetingControlCopy.audio.unmute);
+  });
+
+  it("provides stable status copy for stopped, active, and processing transcription", () => {
+    expect(getLiveTranscriptStatus(false)).toBe(liveTranscriptCopy.stopped);
+    expect(getLiveTranscriptStatus(true)).toBe(liveTranscriptCopy.active);
+    expect(getLiveTranscriptStatus(true, true)).toBe(liveTranscriptCopy.processing);
   });
 });

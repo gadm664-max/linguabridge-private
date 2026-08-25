@@ -94,6 +94,19 @@ export function getMuteControlLabel(muted: boolean) {
   return muted ? meetingControlCopy.audio.unmute : meetingControlCopy.audio.mute;
 }
 
+export const liveTranscriptCopy = {
+  stopped: "النص الحي متوقف",
+  active: "التقاط الصوت يعمل",
+  processing: "جارٍ النسخ والترجمة…",
+  startAction: "تشغيل النص الحي",
+  stopAction: "إيقاف النص الحي",
+} as const;
+
+export function getLiveTranscriptStatus(isListening: boolean, isProcessing = false) {
+  if (isProcessing) return liveTranscriptCopy.processing;
+  return isListening ? liveTranscriptCopy.active : liveTranscriptCopy.stopped;
+}
+
 export const meetingStateLabels: Record<MeetingStatus, string> = {
   lobby: "في الردهة",
   active: "نشطة",
