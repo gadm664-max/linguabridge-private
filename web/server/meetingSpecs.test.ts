@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultVoiceProfile, defaultVoiceRate, getLobbyInviteGuidance, lobbyReadinessCopy, normalizeVoiceProfile, normalizeVoiceRate, supportedLanguages, supportedVoiceProfiles, supportedVoiceRates } from "@linguabridge/contracts/meetingSpecs";
+import { defaultVoiceProfile, defaultVoiceRate, getLobbyInviteGuidance, getMicrophoneMuteControlCopy, lobbyReadinessCopy, normalizeVoiceProfile, normalizeVoiceRate, supportedLanguages, supportedVoiceProfiles, supportedVoiceRates } from "@linguabridge/contracts/meetingSpecs";
 
 describe("shared meeting specifications", () => {
   it("publishes the same supported language set used by web and mobile clients", () => {
@@ -28,5 +28,10 @@ describe("shared meeting specifications", () => {
     expect(lobbyReadinessCopy.invite.disabled).not.toContain("لن يُنشأ رابط");
     expect(getLobbyInviteGuidance(true)).toBe(lobbyReadinessCopy.invite.enabled);
     expect(getLobbyInviteGuidance(false)).toBe(lobbyReadinessCopy.invite.disabled);
+  });
+
+  it("defines one accessible mute-control meaning for web and mobile", () => {
+    expect(getMicrophoneMuteControlCopy(false)).toEqual({ label: "كتم الصوت", active: false });
+    expect(getMicrophoneMuteControlCopy(true)).toEqual({ label: "إلغاء كتم الصوت", active: true });
   });
 });

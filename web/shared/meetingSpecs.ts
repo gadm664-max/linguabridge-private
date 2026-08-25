@@ -1,9 +1,10 @@
 export {
   defaultVoiceRate,
+  getMicrophoneMuteControlCopy,
   meetingPrivacyDefaults,
   meetingStateLabels,
+  microphoneMuteControlCopy,
   defaultVoiceProfile,
-  getInviteSharingSessionParam,
   getLobbyInviteGuidance,
   lobbyReadinessCopy,
   normalizeVoiceRate,
