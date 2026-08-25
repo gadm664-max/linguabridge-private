@@ -1,6 +1,7 @@
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { InsertUser, InsertUserPreference, InsertMeeting, InsertMeetingParticipant, externalWebhookEvents, meetingMinutes, meetings, meetingParticipants, transcriptSegments, userPreferences, users, whatsappOptIns } from "../drizzle/schema";
+import { buildUserDataExport } from "./dataExport";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -167,6 +168,47 @@ export async function saveUserPreferences(userId: number, values: Omit<InsertUse
   if (!db) throw new Error("Database unavailable");
   await db.insert(userPreferences).values({ userId, ...values }).onDuplicateKeyUpdate({ set: values });
   return getUserPreferences(userId);
+}
+
+export async function exportUserAccountData(userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const account = await db.select({
+    id: users.id,
+    name: users.name,
+    email: users.email,
+    role: users.role,
+    createdAt: users.createdAt,
+  }).from(users).where(eq(users.id, userId)).limit(1);
+  if (!account[0]) throw new Error("Account unavailable");
+
+  const preferences = await db.select({
+    speakingLanguage: userPreferences.speakingLanguage,
+    displayLanguage: userPreferences.displayLanguage,
+    voiceName: userPreferences.voiceName,
+    voiceRate: userPreferences.voiceRate,
+    confirmStoragePerMeeting: userPreferences.confirmStoragePerMeeting,
+    meetingReminders: userPreferences.meetingReminders,
+    updatedAt: userPreferences.updatedAt,
+  }).from(userPreferences).where(eq(userPreferences.userId, userId)).limit(1);
+
+  const participation = await db.select({
+    meetingId: meetings.id,
+    title: meetings.title,
+    status: meetings.status,
+    meetingCreatedAt: meetings.createdAt,
+    startedAt: meetings.startedAt,
+    endedAt: meetings.endedAt,
+    joinedAt: meetingParticipants.joinedAt,
+    leftAt: meetingParticipants.leftAt,
+    speakingLanguage: meetingParticipants.speakingLanguage,
+    displayLanguage: meetingParticipants.displayLanguage,
+    voiceName: meetingParticipants.voiceName,
+    voiceRate: meetingParticipants.voiceRate,
+    storageConsent: meetingParticipants.storageConsent,
+  }).from(meetingParticipants).innerJoin(meetings, eq(meetingParticipants.meetingId, meetings.id)).where(eq(meetingParticipants.userId, userId)).orderBy(desc(meetings.createdAt));
+
+  return buildUserDataExport(account[0], preferences[0] ?? null, participation);
 }
 
 export async function joinMeeting(input: {

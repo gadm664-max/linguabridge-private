@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { appendTranscriptSegment, createMeeting, getMeetingForInvite, getUserPreferences, inviteCodeExists, isMeetingPersistenceAllowed, joinMeeting, listMeetingsForHost, saveUserPreferences } from "../db";
+import { appendTranscriptSegment, createMeeting, exportUserAccountData, getMeetingForInvite, getUserPreferences, inviteCodeExists, isMeetingPersistenceAllowed, joinMeeting, listMeetingsForHost, saveUserPreferences } from "../db";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { buildInvitePath, createInviteCode, isValidInviteCode } from "../../shared/meetingUtils";
 
@@ -90,6 +90,14 @@ export const meetingsRouter = router({
   }),
 
   history: protectedProcedure.query(({ ctx }) => listMeetingsForHost(ctx.user.id)),
+
+  dataExport: protectedProcedure.query(async ({ ctx }) => {
+    try {
+      return await exportUserAccountData(ctx.user.id);
+    } catch (error) {
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error instanceof Error ? error.message : "Data export could not be prepared" });
+    }
+  }),
 
   preferences: router({
     get: protectedProcedure.query(async ({ ctx }) => getUserPreferences(ctx.user.id)),
