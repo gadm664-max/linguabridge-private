@@ -69,4 +69,16 @@ describe("MinutesScreen verified minutes", () => {
     expect(renderedText).toContain("المحضر الأحدث");
     expect(renderedText).not.toContain("محضر متأخر");
   });
+
+  it("settles a pending response safely after the minutes screen is unmounted", async () => {
+    let resolvePending: ((value: unknown) => void) | undefined;
+    mocks.getNativeMeetingMinutes.mockReturnValue(new Promise(resolve => { resolvePending = resolve; }));
+    (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<MinutesScreen />); });
+    expect(mocks.getNativeMeetingMinutes).toHaveBeenCalledOnce();
+    act(() => { renderer!.unmount(); });
+    await act(async () => { resolvePending?.({ meeting: {}, minutes: { summary: "استجابة بعد الإلغاء", keyPoints: [], actionItems: [] }, segments: [] }); await Promise.resolve(); });
+    expect(mocks.getNativeMeetingMinutes).toHaveBeenCalledOnce();
+  });
 });
