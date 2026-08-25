@@ -1,20 +1,50 @@
 import { act, create } from "react-test-renderer";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("expo-router", () => ({ router: { back: vi.fn(), push: vi.fn() } }));
+const mocks = vi.hoisted(() => ({ getNativeMeetingMinutes: vi.fn() }));
+
+vi.mock("expo-router", () => ({ router: { back: vi.fn(), push: vi.fn() }, useLocalSearchParams: () => ({ inviteCode: "ABCDEFGH", title: "جلسة اختبار" }) }));
 vi.mock("../components/PrimaryButton", () => ({ GhostButton: () => null, PrimaryButton: () => null }));
 vi.mock("../components/Screen", () => ({ Screen: ({ children }: { children: React.ReactNode }) => children }));
+vi.mock("../lib/meetingService", () => ({ getNativeMeetingMinutes: mocks.getNativeMeetingMinutes }));
 
 import MinutesScreen from "./minutes";
 
-describe("MinutesScreen transparent empty state", () => {
-  it("announces that no approved minutes are available and avoids demo meeting content", () => {
+describe("MinutesScreen verified minutes", () => {
+  beforeEach(() => { mocks.getNativeMeetingMinutes.mockReset(); });
+
+  it("announces loading while verified minutes are requested", () => {
+    mocks.getNativeMeetingMinutes.mockImplementation(() => new Promise(() => undefined));
     (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
     let renderer: ReturnType<typeof create>;
     act(() => { renderer = create(<MinutesScreen />); });
-    const emptyState = renderer!.root.find(node => String(node.type) === "View" && node.props.accessibilityLiveRegion === "polite");
-    expect(emptyState.props.accessibilityLabel).toContain("لا يوجد محضر موثق");
+    expect(renderer!.root.find(node => node.props.accessibilityLabel === "جارٍ تحميل المحضر الموثق").props.accessibilityLiveRegion).toBe("polite");
+  });
+
+  it("shows the transparent empty state when no approved minutes exist", async () => {
+    mocks.getNativeMeetingMinutes.mockResolvedValue({ meeting: {}, minutes: null, segments: [] });
+    (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    let renderer: ReturnType<typeof create>;
+    await act(async () => { renderer = create(<MinutesScreen />); await Promise.resolve(); });
+    expect(renderer!.root.find(node => node.props.accessibilityLabel?.includes("لا يوجد محضر موثق")).props.accessibilityLiveRegion).toBe("polite");
+  });
+
+  it("renders only verified server minutes when they are available", async () => {
+    mocks.getNativeMeetingMinutes.mockResolvedValue({ meeting: {}, minutes: { summary: "ملخص موثق", keyPoints: ["نقطة موثقة"], actionItems: ["إجراء موثق"] }, segments: [] });
+    (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    let renderer: ReturnType<typeof create>;
+    await act(async () => { renderer = create(<MinutesScreen />); await Promise.resolve(); });
     const renderedText = renderer!.root.findAll(node => String(node.type) === "Text").flatMap(node => node.children).join("");
-    expect(renderedText).not.toContain("نطاق الإطلاق");
+    expect(renderedText).toContain("ملخص موثق");
+    expect(renderedText).toContain("نقطة موثقة");
+    expect(renderedText).toContain("إجراء موثق");
+  });
+
+  it("announces a recoverable error when verified minutes cannot be loaded", async () => {
+    mocks.getNativeMeetingMinutes.mockRejectedValue(new Error("network unavailable"));
+    (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    let renderer: ReturnType<typeof create>;
+    await act(async () => { renderer = create(<MinutesScreen />); await Promise.resolve(); });
+    expect(renderer!.root.find(node => node.props.accessibilityLabel?.includes("تعذر تحميل المحضر")).props.accessibilityLiveRegion).toBe("polite");
   });
 });

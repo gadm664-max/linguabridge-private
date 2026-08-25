@@ -21,6 +21,18 @@ export type NativeMeetingHistoryItem = {
   createdAt: Date | string | number;
 };
 
+export type NativeMeetingMinutes = {
+  summary: string;
+  keyPoints: string[];
+  actionItems: string[];
+};
+
+export type NativeMeetingMinutesResponse = {
+  meeting: MeetingInviteDetails;
+  minutes: NativeMeetingMinutes | null;
+  segments: unknown[];
+};
+
 export async function createNativeMeeting(input: {
   title: string;
   speakingLanguage: string;
@@ -43,6 +55,10 @@ export async function getNativeMeetingForInvite(inviteCode: string) {
 
 export async function getNativeMeetingHistory() {
   return getApi().meetings.history.query() as Promise<NativeMeetingHistoryItem[]>;
+}
+
+export async function getNativeMeetingMinutes(inviteCode: string) {
+  return getApi().minutes.get.query({ inviteCode: requireInviteCode(inviteCode) }) as Promise<NativeMeetingMinutesResponse>;
 }
 
 export async function transcribeRecording(input: {
