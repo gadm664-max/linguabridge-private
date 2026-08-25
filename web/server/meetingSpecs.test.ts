@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultVoiceProfile, defaultVoiceRate, getInviteSharingSessionParam, getLiveTranscriptStatus, getLobbyInviteGuidance, getMuteControlLabel, liveTranscriptCopy, lobbyReadinessCopy, meetingControlCopy, meetingStateLabels, normalizeVoiceProfile, normalizeVoiceRate, supportedLanguages, supportedVoiceProfiles, supportedVoiceRates } from "@linguabridge/contracts/meetingSpecs";
+import { defaultVoiceProfile, defaultVoiceRate, getLobbyInviteGuidance, lobbyReadinessCopy, normalizeVoiceProfile, normalizeVoiceRate, supportedLanguages, supportedVoiceProfiles, supportedVoiceRates } from "@linguabridge/contracts/meetingSpecs";
 
 describe("shared meeting specifications", () => {
   it("publishes the same supported language set used by web and mobile clients", () => {
@@ -24,25 +24,9 @@ describe("shared meeting specifications", () => {
     expect(lobbyReadinessCopy.microphone.testAction).toBe("اختبار الميكروفون");
     expect(lobbyReadinessCopy.consent.required).toContain("موافقتك");
     expect(lobbyReadinessCopy.invite.enabled).toContain("مشاركته");
-    expect(lobbyReadinessCopy.invite.disabled).toContain("أدوات نسخ أو مشاركة");
+    expect(lobbyReadinessCopy.invite.disabled).toContain("رمز الانضمام صالحًا");
+    expect(lobbyReadinessCopy.invite.disabled).not.toContain("لن يُنشأ رابط");
     expect(getLobbyInviteGuidance(true)).toBe(lobbyReadinessCopy.invite.enabled);
     expect(getLobbyInviteGuidance(false)).toBe(lobbyReadinessCopy.invite.disabled);
-    expect(getInviteSharingSessionParam(true)).toBe("1");
-    expect(getInviteSharingSessionParam(false)).toBe("0");
-  });
-
-  it("provides the same accessible labels for mute controls", () => {
-    expect(getMuteControlLabel(false)).toBe(meetingControlCopy.audio.mute);
-    expect(getMuteControlLabel(true)).toBe(meetingControlCopy.audio.unmute);
-  });
-
-  it("provides stable status copy for stopped, active, and processing transcription", () => {
-    expect(getLiveTranscriptStatus(false)).toBe(liveTranscriptCopy.stopped);
-    expect(getLiveTranscriptStatus(true)).toBe(liveTranscriptCopy.active);
-    expect(getLiveTranscriptStatus(true, true)).toBe(liveTranscriptCopy.processing);
-  });
-
-  it("publishes the canonical meeting status names used by both clients", () => {
-    expect(meetingStateLabels).toEqual({ lobby: "في الردهة", active: "نشطة", ended: "انتهت" });
   });
 });

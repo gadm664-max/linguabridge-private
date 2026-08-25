@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildNativeMeetingRouteParams, resolveInviteSharingEnabled } from "./inviteSharingPolicy";
+import { getLobbyInviteGuidance } from "./specs";
 
 describe("resolveInviteSharingEnabled", () => {
   it("uses the persisted server policy over a link parameter", () => {
@@ -21,5 +22,9 @@ describe("resolveInviteSharingEnabled", () => {
 
     expect(route).toMatchObject({ inviteCode: "ABCDEFGH", share: "0" });
     expect(resolveInviteSharingEnabled({ inviteCode: route.inviteCode, share: route.share, serverPolicy: false })).toBe(false);
+  });
+
+  it("shows the corrected shared explanation when invite sharing tools are disabled", () => {
+    expect(getLobbyInviteGuidance(false)).toContain("رمز الانضمام صالحًا");
   });
 });

@@ -67,7 +67,7 @@ export const lobbyReadinessCopy = {
   invite: {
     title: "إرسال رابط دعوة",
     enabled: "يمكنك نسخ الرابط ومشاركته بعد فتح الجلسة.",
-    disabled: "لن تظهر أدوات نسخ أو مشاركة الرابط داخل هذه الجلسة.",
+    disabled: "لن تُعرض أدوات مشاركة الرابط في هذه الجلسة؛ يظل رمز الانضمام صالحًا للمشاركين المصرح لهم.",
   },
   consent: {
     title: "أوافق على حفظ النص المترجم ومحضر الاجتماع.",
@@ -80,35 +80,6 @@ export type LobbyInviteState = "enabled" | "disabled";
 
 export function getLobbyInviteGuidance(enabled: boolean) {
   return lobbyReadinessCopy.invite[enabled ? "enabled" : "disabled"];
-}
-
-export function getInviteSharingSessionParam(enabled: boolean) {
-  return enabled ? "1" : "0";
-}
-
-export const meetingControlCopy = {
-  audio: {
-    mute: "كتم الصوت",
-    unmute: "إلغاء كتم الصوت",
-    deviceTest: "اختبار جهاز الصوت",
-  },
-} as const;
-
-export function getMuteControlLabel(muted: boolean) {
-  return muted ? meetingControlCopy.audio.unmute : meetingControlCopy.audio.mute;
-}
-
-export const liveTranscriptCopy = {
-  stopped: "النص الحي متوقف",
-  active: "التقاط الصوت يعمل",
-  processing: "جارٍ النسخ والترجمة…",
-  startAction: "تشغيل النص الحي",
-  stopAction: "إيقاف النص الحي",
-} as const;
-
-export function getLiveTranscriptStatus(isListening: boolean, isProcessing = false) {
-  if (isProcessing) return liveTranscriptCopy.processing;
-  return isListening ? liveTranscriptCopy.active : liveTranscriptCopy.stopped;
 }
 
 export const meetingStateLabels: Record<MeetingStatus, string> = {
