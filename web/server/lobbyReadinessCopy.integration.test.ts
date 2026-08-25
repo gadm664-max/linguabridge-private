@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 
 const webRoot = resolve(import.meta.dirname, "..");
 const webLobby = readFileSync(resolve(webRoot, "client/src/pages/Lobby.tsx"), "utf8");
+const webJoin = readFileSync(resolve(webRoot, "client/src/pages/Join.tsx"), "utf8");
+const webMeeting = readFileSync(resolve(webRoot, "client/src/pages/Meeting.tsx"), "utf8");
 const mobileLobby = readFileSync(resolve(webRoot, "..", "linguabridge-mobile", "app", "lobby.tsx"), "utf8");
 
 describe("lobby readiness copy integration", () => {
@@ -19,6 +21,8 @@ describe("lobby readiness copy integration", () => {
     expect(webLobby).toContain('aria-pressed={invite}');
     expect(webLobby).toContain('getInviteSharingSessionParam(invite)');
     expect(mobileLobby).toContain('Switch value={inviteEnabled}');
-    expect(mobileLobby).toContain('getInviteSharingSessionParam(inviteEnabled)');
+    expect(mobileLobby).toContain('getInviteSharingSessionParam(meeting.inviteSharingEnabled)');
+    expect(webJoin).toContain('getInviteSharingSessionParam(result.inviteSharingEnabled)');
+    expect(webMeeting).toContain('meetingDetails.data?.inviteSharingEnabled');
   });
 });

@@ -10,7 +10,7 @@ import { useLocation, useRoute } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { startLogin } from "@/const";
 import { trpc } from "@/lib/trpc";
-import { defaultVoiceProfile, defaultVoiceRate, supportedLanguages } from "../../../shared/meetingSpecs";
+import { defaultVoiceProfile, defaultVoiceRate, getInviteSharingSessionParam, supportedLanguages } from "../../../shared/meetingSpecs";
 
 export default function Join() {
   const [, setLocation] = useLocation();
@@ -25,7 +25,7 @@ export default function Join() {
   const preferences = trpc.meetings.preferences.get.useQuery(undefined, { enabled: Boolean(user) });
   const meeting = trpc.meetings.byInvite.useQuery({ inviteCode }, { enabled: Boolean(inviteCode) });
   const join = trpc.meetings.join.useMutation({
-    onSuccess: () => { toast.success("انضممت إلى الاجتماع. أهلاً بك."); setLocation(`/meeting/${inviteCode}`); },
+    onSuccess: result => { toast.success("انضممت إلى الاجتماع. أهلاً بك."); setLocation(`/meeting/${inviteCode}?share=${getInviteSharingSessionParam(result.inviteSharingEnabled)}`); },
     onError: error => toast.error(error.message || "تعذر الانضمام إلى الجلسة."),
   });
 

@@ -95,6 +95,7 @@ export async function createMeeting(input: {
   inviteCode: string;
   title: string;
   storageConsent: boolean;
+  inviteSharingEnabled: boolean;
   hostName: string;
   speakingLanguage: string;
   displayLanguage: string;
@@ -110,6 +111,7 @@ export async function createMeeting(input: {
     title: input.title,
     status: "lobby",
     storageConsent: input.storageConsent,
+    inviteSharingEnabled: input.inviteSharingEnabled,
   };
   const created = await db.insert(meetings).values(meetingValues).$returningId();
   const meetingId = created[0]?.id;
@@ -126,7 +128,7 @@ export async function createMeeting(input: {
     storageConsent: input.storageConsent,
   };
   await db.insert(meetingParticipants).values(participantValues);
-  return { id: meetingId, inviteCode: input.inviteCode, title: input.title, status: "lobby" as const };
+  return { id: meetingId, inviteCode: input.inviteCode, title: input.title, status: "lobby" as const, inviteSharingEnabled: input.inviteSharingEnabled };
 }
 
 export async function inviteCodeExists(inviteCode: string) {
@@ -145,6 +147,7 @@ export async function getMeetingForInvite(inviteCode: string) {
     title: meetings.title,
     status: meetings.status,
     storageConsent: meetings.storageConsent,
+    inviteSharingEnabled: meetings.inviteSharingEnabled,
     createdAt: meetings.createdAt,
   }).from(meetings).where(eq(meetings.inviteCode, inviteCode)).limit(1);
   return result[0] ?? null;

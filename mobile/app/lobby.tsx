@@ -21,8 +21,8 @@ export default function LobbyScreen() {
     try {
       setCreating(true);
       if (!(await getSessionToken())) await signInWithLinguaBridge();
-      const meeting = await createNativeMeeting({ title, speakingLanguage: speaking, displayLanguage: display, storageConsent: consent, voiceName: preferences.voiceName, voiceRate: preferences.voiceRate.toFixed(1) });
-      router.push({ pathname: "/meeting", params: { title: meeting.title, speaking, display, inviteCode: meeting.inviteCode, share: getInviteSharingSessionParam(inviteEnabled) } });
+      const meeting = await createNativeMeeting({ title, speakingLanguage: speaking, displayLanguage: display, storageConsent: consent, voiceName: preferences.voiceName, voiceRate: preferences.voiceRate.toFixed(1), inviteSharingEnabled: inviteEnabled });
+      router.push({ pathname: "/meeting", params: { title: meeting.title, speaking, display, inviteCode: meeting.inviteCode, share: getInviteSharingSessionParam(meeting.inviteSharingEnabled) } });
     } catch (error) {
       Alert.alert("تعذر إنشاء الاجتماع", error instanceof Error ? error.message : "تحقق من إعداد الخدمة وتسجيل الدخول ثم أعد المحاولة.");
     } finally { setCreating(false); }

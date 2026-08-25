@@ -6,6 +6,7 @@ export type MeetingBootstrap = {
   inviteCode: string;
   title: string;
   status: string;
+  inviteSharingEnabled: boolean;
 };
 
 export async function createNativeMeeting(input: {
@@ -15,6 +16,7 @@ export async function createNativeMeeting(input: {
   storageConsent: boolean;
   voiceName: string;
   voiceRate: string;
+  inviteSharingEnabled: boolean;
 }) {
   return getApi().meetings.create.mutate({
     ...input,

@@ -26,6 +26,7 @@ export const meetingsRouter = router({
   create: protectedProcedure.input(z.object({
     title: z.string().trim().min(2).max(160),
     storageConsent: z.boolean(),
+    inviteSharingEnabled: z.boolean().default(true),
     speakingLanguage: languageCode,
     displayLanguage: languageCode,
     voiceName: z.string().trim().min(1).max(64).default("natural"),
@@ -37,6 +38,7 @@ export const meetingsRouter = router({
       inviteCode,
       title: input.title,
       storageConsent: input.storageConsent,
+      inviteSharingEnabled: input.inviteSharingEnabled,
       hostName: ctx.user.name || "مضيف الاجتماع",
       speakingLanguage: input.speakingLanguage,
       displayLanguage: input.displayLanguage,

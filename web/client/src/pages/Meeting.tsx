@@ -52,7 +52,6 @@ export default function Meeting() {
   const [, setLocation] = useLocation();
   const [, params] = useRoute("/meeting/:sessionId");
   const inviteCode = params?.sessionId?.toUpperCase() ?? "";
-  const inviteSharingEnabled = isInviteSharingEnabled(window.location.search);
   const validInviteCode = /^[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{8,16}$/.test(inviteCode);
   const { user } = useAuth();
   const [muted, setMuted] = useState(false);
@@ -71,6 +70,7 @@ export default function Meeting() {
   const [displayLanguage, setDisplayLanguage] = useState("en");
 
   const meetingDetails = trpc.meetings.byInvite.useQuery({ inviteCode }, { enabled: validInviteCode });
+  const inviteSharingEnabled = meetingDetails.data?.inviteSharingEnabled ?? isInviteSharingEnabled(window.location.search);
   const privacy = trpc.meetings.privacyStatus.useQuery({ inviteCode }, { enabled: Boolean(user && validInviteCode) });
   const translateText = trpc.translation.translateText.useMutation();
   const saveSegment = trpc.meetings.saveSegment.useMutation();

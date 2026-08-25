@@ -32,6 +32,7 @@ export const meetings = mysqlTable("meetings", {
   title: varchar("title", { length: 160 }).notNull(),
   status: mysqlEnum("status", ["lobby", "active", "ended"]).default("lobby").notNull(),
   storageConsent: boolean("storageConsent").default(false).notNull(),
+  inviteSharingEnabled: boolean("inviteSharingEnabled").default(true).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   startedAt: timestamp("startedAt"),
   endedAt: timestamp("endedAt"),

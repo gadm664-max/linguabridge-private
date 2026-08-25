@@ -66,6 +66,7 @@ export default function Lobby() {
       displayLanguage,
       voiceName: voice,
       voiceRate: rate.toFixed(1),
+      inviteSharingEnabled: invite,
     });
   };
 
