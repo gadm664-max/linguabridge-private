@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
 import { GhostButton, PrimaryButton } from "../components/PrimaryButton";
 import { Screen } from "../components/Screen";
@@ -10,12 +10,23 @@ export default function MinutesScreen() {
   const params = useLocalSearchParams<{ inviteCode?: string; title?: string }>();
   const [minutes, setMinutes] = useState<NativeMeetingMinutes | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "error">(params.inviteCode ? "loading" : "ready");
+  const requestSequence = useRef(0);
+  const mounted = useRef(true);
+
+  useEffect(() => () => { mounted.current = false; requestSequence.current += 1; }, []);
 
   const loadMinutes = async () => {
     if (!params.inviteCode) return;
+    const requestId = ++requestSequence.current;
     setState("loading");
-    try { const result = await getNativeMeetingMinutes(params.inviteCode); setMinutes(result.minutes); setState("ready"); }
-    catch { setState("error"); }
+    try {
+      const result = await getNativeMeetingMinutes(params.inviteCode);
+      if (!mounted.current || requestId !== requestSequence.current) return;
+      setMinutes(result.minutes); setState("ready");
+    } catch {
+      if (!mounted.current || requestId !== requestSequence.current) return;
+      setState("error");
+    }
   };
 
   useEffect(() => {

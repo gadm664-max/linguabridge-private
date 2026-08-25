@@ -52,4 +52,21 @@ describe("MinutesScreen verified minutes", () => {
     expect(mocks.getNativeMeetingMinutes).toHaveBeenCalledTimes(2);
     expect(renderer!.root.find(node => node.props.accessibilityLabel?.includes("لا يوجد محضر موثق")).props.accessibilityLiveRegion).toBe("polite");
   });
+
+  it("ignores a stale retry response after a newer retry has completed", async () => {
+    let resolveStale: ((value: unknown) => void) | undefined;
+    const staleRequest = new Promise(resolve => { resolveStale = resolve; });
+    mocks.getNativeMeetingMinutes.mockRejectedValueOnce(new Error("network unavailable")).mockReturnValueOnce(staleRequest).mockResolvedValueOnce({ meeting: {}, minutes: { summary: "المحضر الأحدث", keyPoints: [], actionItems: [] }, segments: [] });
+    (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    let renderer: ReturnType<typeof create>;
+    await act(async () => { renderer = create(<MinutesScreen />); await Promise.resolve(); });
+    const retry = renderer!.root.find(node => String(node.type) === "PrimaryButton" && node.props.title === "إعادة المحاولة");
+    await act(async () => { retry.props.onPress(); retry.props.onPress(); await Promise.resolve(); });
+    let renderedText = renderer!.root.findAll(node => String(node.type) === "Text").flatMap(node => node.children).join("");
+    expect(renderedText).toContain("المحضر الأحدث");
+    await act(async () => { resolveStale?.({ meeting: {}, minutes: { summary: "محضر متأخر", keyPoints: [], actionItems: [] }, segments: [] }); await Promise.resolve(); });
+    renderedText = renderer!.root.findAll(node => String(node.type) === "Text").flatMap(node => node.children).join("");
+    expect(renderedText).toContain("المحضر الأحدث");
+    expect(renderedText).not.toContain("محضر متأخر");
+  });
 });
