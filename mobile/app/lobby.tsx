@@ -11,6 +11,7 @@ import { colors } from "../lib/theme";
 import { createNativeMeeting } from "../lib/meetingService";
 import { getSessionToken, signInWithLinguaBridge } from "../lib/session";
 import { defaultMobilePreferences, loadMobilePreferences } from "../lib/preferences";
+import { buildNativeMeetingRouteParams } from "../lib/inviteSharingPolicy";
 
 export default function LobbyScreen() {
   const [title, setTitle] = useState("اجتماع جديد متعدد اللغات"); const [speaking, setSpeaking] = useState(defaultMobilePreferences.speechLanguage); const [display, setDisplay] = useState(defaultMobilePreferences.displayLanguage); const [preferences, setPreferences] = useState(defaultMobilePreferences); const [consent, setConsent] = useState(false); const [inviteEnabled, setInviteEnabled] = useState(true); const [tested, setTested] = useState(false); const [creating, setCreating] = useState(false);
@@ -20,8 +21,8 @@ export default function LobbyScreen() {
     try {
       setCreating(true);
       if (!(await getSessionToken())) await signInWithLinguaBridge();
-      const meeting = await createNativeMeeting({ title, speakingLanguage: speaking, displayLanguage: display, storageConsent: consent, voiceName: preferences.voiceName, voiceRate: preferences.voiceRate.toFixed(1) });
-      router.push({ pathname: "/meeting", params: { title: meeting.title, speaking, display, inviteCode: meeting.inviteCode, share: inviteEnabled ? "1" : "0" } });
+      const meeting = await createNativeMeeting({ title, speakingLanguage: speaking, displayLanguage: display, storageConsent: consent, inviteSharingEnabled: inviteEnabled, voiceName: preferences.voiceName, voiceRate: preferences.voiceRate.toFixed(1) });
+      router.push({ pathname: "/meeting", params: buildNativeMeetingRouteParams({ meeting, speaking, display }) });
     } catch (error) {
       Alert.alert("تعذر إنشاء الاجتماع", error instanceof Error ? error.message : "تحقق من إعداد الخدمة وتسجيل الدخول ثم أعد المحاولة.");
     } finally { setCreating(false); }

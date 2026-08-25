@@ -1,52 +1,36 @@
 import * as FileSystem from "expo-file-system/legacy";
-import type { MeetingStatus } from "@linguabridge/contracts/meetingSpecs";
 import { getApi } from "./api";
 import { requireInviteCode } from "./meetingGuards";
 
 export type MeetingBootstrap = {
   inviteCode: string;
   title: string;
-  status: MeetingStatus;
+  status: string;
   inviteSharingEnabled: boolean;
 };
 
-export type MeetingInvitation = MeetingBootstrap & {
+export type MeetingInviteDetails = MeetingBootstrap & {
   storageConsent: boolean;
 };
-
-export type MeetingHistoryItem = MeetingBootstrap & { createdAt: string | Date };
 
 export async function createNativeMeeting(input: {
   title: string;
   speakingLanguage: string;
   displayLanguage: string;
   storageConsent: boolean;
+  inviteSharingEnabled: boolean;
   voiceName: string;
   voiceRate: string;
-  inviteSharingEnabled: boolean;
 }) {
   return getApi().meetings.create.mutate({
     ...input,
   }) as Promise<MeetingBootstrap>;
 }
 
-export async function getNativeMeetingInvitation(inviteCode: string) {
-  return getApi().meetings.byInvite.query({ inviteCode }) as Promise<MeetingInvitation>;
-}
-
-export async function joinNativeMeeting(input: {
-  inviteCode: string;
-  speakingLanguage: string;
-  displayLanguage: string;
-  voiceName: string;
-  voiceRate: string;
-  storageConsent: boolean;
-}) {
-  return getApi().meetings.join.mutate(input) as Promise<MeetingBootstrap>;
-}
-
-export async function getNativeMeetingHistory() {
-  return getApi().meetings.history.query() as Promise<MeetingHistoryItem[]>;
+export async function getNativeMeetingForInvite(inviteCode: string) {
+  return getApi().meetings.byInvite.query({
+    inviteCode: requireInviteCode(inviteCode),
+  }) as Promise<MeetingInviteDetails>;
 }
 
 export async function transcribeRecording(input: {
