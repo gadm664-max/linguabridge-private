@@ -9,6 +9,10 @@ export type MeetingBootstrap = {
   inviteSharingEnabled: boolean;
 };
 
+export type MeetingInvitation = MeetingBootstrap & {
+  storageConsent: boolean;
+};
+
 export async function createNativeMeeting(input: {
   title: string;
   speakingLanguage: string;
@@ -21,6 +25,21 @@ export async function createNativeMeeting(input: {
   return getApi().meetings.create.mutate({
     ...input,
   }) as Promise<MeetingBootstrap>;
+}
+
+export async function getNativeMeetingInvitation(inviteCode: string) {
+  return getApi().meetings.byInvite.query({ inviteCode }) as Promise<MeetingInvitation>;
+}
+
+export async function joinNativeMeeting(input: {
+  inviteCode: string;
+  speakingLanguage: string;
+  displayLanguage: string;
+  voiceName: string;
+  voiceRate: string;
+  storageConsent: boolean;
+}) {
+  return getApi().meetings.join.mutate(input) as Promise<MeetingBootstrap>;
 }
 
 export async function transcribeRecording(input: {
