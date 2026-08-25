@@ -3,6 +3,7 @@ import { Router, type Express, type Request, type Response } from "express";
 import { z } from "zod";
 import * as db from "./db";
 import { sdk } from "./_core/sdk";
+import { sameOriginGuard } from "./security";
 import {
   AUTH_ERROR_MESSAGE,
   AUTH_CONSTANTS,
@@ -104,6 +105,7 @@ function validationError(res: Response, message = "Invalid request") {
 
 export function registerAuthRoutes(app: Express) {
   const router = Router();
+  router.use(sameOriginGuard);
 
   router.post("/register", async (req: Request, res: Response) => {
     if (!allowRequest(req, res, "register")) return;

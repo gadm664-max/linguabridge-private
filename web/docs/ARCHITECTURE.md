@@ -33,7 +33,7 @@ Browser
 
 ## الأمن والتوسع
 
-تستخدم كلمات المرور scrypt مع salt عشوائي، وتخزن refresh tokens بصمات SHA-256 فقط مع rotation وrevocation. يستخدم rate limiter ذاكرةً مؤقتةً حاليًا؛ يجب استبداله بـ Redis قبل تشغيل أكثر من instance. تظل migration المتوافقة مع MySQL/TiDB ومفاتيح الجداول العددية قرار توافق مع Phase 1، بينما يتطلب الانتقال إلى PostgreSQL/UUID مرحلة ترحيل مستقلة.
+تستخدم كلمات المرور scrypt مع salt عشوائي، وتخزن refresh tokens بصمات SHA-256 فقط مع rotation وrevocation. تستخدم مسارات cookie-backed REST same-origin guard مع `APP_ORIGIN` اختياري، ولا تفتح CORS عامًا. يستخدم rate limiter ذاكرةً مؤقتةً حاليًا؛ يجب استبداله بـ Redis قبل تشغيل أكثر من instance. يستخدم LLM gateway timeout قدره 20 ثانية وإعادة محاولة محدودة لـ429/5xx/network، مع أخطاء منظمة لا تعيد response body أو الأسرار. تظل migration المتوافقة مع MySQL/TiDB ومفاتيح الجداول العددية قرار توافق مع Phase 1، بينما يتطلب الانتقال إلى PostgreSQL/UUID مرحلة ترحيل مستقلة.
 
 ## ما بعد Phase 2
 

@@ -21,4 +21,4 @@
 
 ## Phase 2
 
-أضيفت طبقة المصادقة ومساحات العمل والعضويات، إلى جانب أول Translation Provider حقيقي يعمل عبر بوابة LLM على الخادم. راجع [توثيق Phase 2](web/docs/phase-2-auth-database-translation.md)، و[Authentication](web/docs/AUTHENTICATION.md)، و[Translation API](web/docs/TRANSLATION.md)، و[Architecture](web/docs/ARCHITECTURE.md) قبل تشغيل migration أو إعداد بيانات الاعتماد.
+أضيفت طبقة المصادقة ومساحات العمل والعضويات، إلى جانب أول Translation Provider حقيقي يعمل عبر بوابة LLM على الخادم. راجع [توثيق Phase 2](web/docs/phase-2-auth-database-translation.md)، و[Authentication](web/docs/AUTHENTICATION.md)، و[Translation API](web/docs/TRANSLATION.md)، و[Architecture](web/docs/ARCHITECTURE.md)، و[Database Decision](web/docs/DATABASE_DECISION.md)، و[Phase 2.1 Security Hardening](web/docs/PHASE_2_1_SECURITY_HARDENING.md) قبل تشغيل migration أو إعداد بيانات الاعتماد.

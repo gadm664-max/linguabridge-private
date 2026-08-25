@@ -19,7 +19,12 @@ export type FileContent = {
   type: "file_url";
   file_url: {
     url: string;
-    mime_type?: "audio/mpeg" | "audio/wav" | "application/pdf" | "audio/mp4" | "video/mp4" ;
+    mime_type?:
+      | "audio/mpeg"
+      | "audio/wav"
+      | "application/pdf"
+      | "audio/mp4"
+      | "video/mp4";
   };
 };
 
@@ -99,6 +104,26 @@ export type InvokeResult = {
     total_tokens: number;
   };
 };
+
+export type LlmGatewayErrorCode =
+  | "AUTHENTICATION_FAILED"
+  | "RATE_LIMITED"
+  | "TIMEOUT"
+  | "NETWORK_FAILURE"
+  | "UPSTREAM_FAILURE"
+  | "MALFORMED_RESPONSE";
+
+export class LlmGatewayError extends Error {
+  constructor(
+    public readonly code: LlmGatewayErrorCode,
+    message: string,
+    public readonly statusCode: number,
+    public readonly retryAfterMs?: number
+  ) {
+    super(message);
+    this.name = "LlmGatewayError";
+  }
+}
 
 export type JsonSchema = {
   name: string;
@@ -219,7 +244,11 @@ const resolveApiUrl = () =>
 
 const assertApiKey = () => {
   if (!ENV.forgeApiKey) {
-    throw new Error("OPENAI_API_KEY is not configured");
+    throw new LlmGatewayError(
+      "AUTHENTICATION_FAILED",
+      "LLM gateway credentials are not configured",
+      503
+    );
   }
 };
 
@@ -271,6 +300,7 @@ const normalizeResponseFormat = ({
 const RETRY_MAX_RETRIES = 4;
 const RETRY_BASE_DELAY_MS = 500;
 const RETRY_MAX_DELAY_MS = 30_000;
+const REQUEST_TIMEOUT_MS = 20_000;
 
 type FetchInit = NonNullable<Parameters<typeof fetch>[1]>;
 
@@ -297,8 +327,6 @@ const computeBackoffDelay = (
   return Math.min(Math.max(jittered, retryAfterMs ?? 0), RETRY_MAX_DELAY_MS);
 };
 
-// Retries non-2xx responses and network errors with exponential backoff, then
-// returns the final Response so callers keep their existing error handling.
 const fetchWithBackoff = async (
   url: string,
   init: FetchInit
@@ -306,37 +334,54 @@ const fetchWithBackoff = async (
   let lastError: unknown;
 
   for (let attempt = 0; attempt <= RETRY_MAX_RETRIES; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     try {
-      const response = await fetch(url, init);
-      if (response.ok || attempt === RETRY_MAX_RETRIES) {
-        return response;
-      }
+      const response = await fetch(url, { ...init, signal: controller.signal });
+      if (response.ok || attempt === RETRY_MAX_RETRIES) return response;
 
-      const retryAfterMs = parseRetryAfter(
-        response.headers.get("retry-after")
-      );
+      const retryAfterMs = parseRetryAfter(response.headers.get("retry-after"));
+      const retryable = response.status === 429 || response.status >= 500;
       try {
         await response.body?.cancel();
       } catch {
         // Body already settled; nothing to clean up.
       }
+      if (!retryable) return response;
       console.warn(
         `LLM request retry ${attempt + 1}/${RETRY_MAX_RETRIES} after status ${response.status}`
       );
       await sleep(computeBackoffDelay(attempt, retryAfterMs));
     } catch (error) {
       lastError = error;
-      if (attempt === RETRY_MAX_RETRIES) throw error;
+      const timedOut =
+        error instanceof Error &&
+        (error.name === "AbortError" || error.name === "TimeoutError");
+      if (attempt === RETRY_MAX_RETRIES) {
+        throw new LlmGatewayError(
+          timedOut ? "TIMEOUT" : "NETWORK_FAILURE",
+          timedOut
+            ? "LLM gateway request timed out"
+            : "LLM gateway network failure",
+          timedOut ? 504 : 503
+        );
+      }
       console.warn(
-        `LLM request retry ${attempt + 1}/${RETRY_MAX_RETRIES} after network error`
+        `LLM request retry ${attempt + 1}/${RETRY_MAX_RETRIES} after ${timedOut ? "timeout" : "network error"}`
       );
       await sleep(computeBackoffDelay(attempt));
+    } finally {
+      clearTimeout(timeout);
     }
   }
 
   throw lastError instanceof Error
     ? lastError
-    : new Error("LLM request failed after exhausting retries");
+    : new LlmGatewayError(
+        "UPSTREAM_FAILURE",
+        "LLM gateway request failed",
+        502
+      );
 };
 
 export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
@@ -411,13 +456,39 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   });
 
   if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(
-      `LLM invoke failed: ${response.status} ${response.statusText} – ${errorText}`
+    const retryAfterMs = parseRetryAfter(response.headers.get("retry-after"));
+    if (response.status === 401 || response.status === 403) {
+      throw new LlmGatewayError(
+        "AUTHENTICATION_FAILED",
+        "LLM gateway authentication failed",
+        502
+      );
+    }
+    if (response.status === 429) {
+      throw new LlmGatewayError(
+        "RATE_LIMITED",
+        "LLM gateway rate limit exceeded",
+        429,
+        retryAfterMs
+      );
+    }
+    throw new LlmGatewayError(
+      "UPSTREAM_FAILURE",
+      "LLM gateway returned an upstream error",
+      502,
+      retryAfterMs
     );
   }
 
-  return (await response.json()) as InvokeResult;
+  try {
+    return (await response.json()) as InvokeResult;
+  } catch {
+    throw new LlmGatewayError(
+      "MALFORMED_RESPONSE",
+      "LLM gateway returned malformed JSON",
+      502
+    );
+  }
 }
 
 export type ModelInfo = {
@@ -435,20 +506,47 @@ export type ModelsResponse = {
 export async function listLLMModels(): Promise<ModelsResponse> {
   assertApiKey();
 
-  const url = ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0
-    ? `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/models`
-    : "https://forge.manus.im/v1/models";
+  const url =
+    ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0
+      ? `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/models`
+      : "https://forge.manus.im/v1/models";
 
   const response = await fetchWithBackoff(url, {
     headers: { authorization: `Bearer ${ENV.forgeApiKey}` },
   });
 
   if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(
-      `List LLM models failed: ${response.status} ${response.statusText} – ${errorText}`
+    const retryAfterMs = parseRetryAfter(response.headers.get("retry-after"));
+    if (response.status === 401 || response.status === 403) {
+      throw new LlmGatewayError(
+        "AUTHENTICATION_FAILED",
+        "LLM gateway authentication failed",
+        502
+      );
+    }
+    if (response.status === 429) {
+      throw new LlmGatewayError(
+        "RATE_LIMITED",
+        "LLM gateway rate limit exceeded",
+        429,
+        retryAfterMs
+      );
+    }
+    throw new LlmGatewayError(
+      "UPSTREAM_FAILURE",
+      "LLM gateway returned an upstream error",
+      502,
+      retryAfterMs
     );
   }
 
-  return (await response.json()) as ModelsResponse;
+  try {
+    return (await response.json()) as ModelsResponse;
+  } catch {
+    throw new LlmGatewayError(
+      "MALFORMED_RESPONSE",
+      "LLM gateway returned malformed JSON",
+      502
+    );
+  }
 }

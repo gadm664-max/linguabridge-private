@@ -117,4 +117,27 @@ describe("POST /translate/text", () => {
     expect(unsupported.status).toBe(422);
     expect(translateMeetingText).not.toHaveBeenCalled();
   });
+
+  it("rate limits excessive requests and returns Retry-After", async () => {
+    const baseUrl = await startServer();
+    const responses = [];
+    for (let index = 0; index < 31; index += 1) {
+      responses.push(
+        await fetch(`${baseUrl}/translate/text`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            text: "Hello",
+            sourceLanguage: "en",
+            targetLanguage: "ar",
+          }),
+        })
+      );
+    }
+
+    expect(responses.at(-1)?.status).toBe(429);
+    expect(responses.at(-1)?.headers.get("retry-after")).toEqual(
+      expect.any(String)
+    );
+  });
 });

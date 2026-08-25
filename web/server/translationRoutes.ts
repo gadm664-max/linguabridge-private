@@ -3,6 +3,7 @@ import { z } from "zod";
 import { supportedLanguages } from "@linguabridge/contracts/meetingSpecs";
 import * as db from "./db";
 import { sdk } from "./_core/sdk";
+import { sameOriginGuard } from "./security";
 import { requestId } from "./services/localAuth";
 import {
   translateMeetingText,
@@ -67,6 +68,9 @@ async function recordUsage(
 
 function sendError(res: Response, error: unknown, id: string) {
   if (error instanceof TranslationServiceError) {
+    if (error.retryAfterMs !== undefined) {
+      res.setHeader("Retry-After", Math.ceil(error.retryAfterMs / 1000));
+    }
     res.status(error.statusCode).json({
       error: { code: error.code, message: error.message, requestId: id },
     });
@@ -87,6 +91,7 @@ function sendError(res: Response, error: unknown, id: string) {
 
 export function registerTranslationRoutes(app: Express) {
   const router = Router();
+  router.use(sameOriginGuard);
 
   router.post("/text", async (req: Request, res: Response) => {
     const id = requestId();

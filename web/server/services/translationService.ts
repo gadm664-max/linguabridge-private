@@ -2,6 +2,7 @@ import {
   createTranslationProvider,
   type TranslationProvider,
   type TranslationRequest,
+  TranslationProviderError,
 } from "./translationProvider";
 
 export type {
@@ -17,7 +18,8 @@ export class TranslationServiceError extends Error {
   constructor(
     public readonly code: string,
     message: string,
-    public readonly statusCode = 502
+    public readonly statusCode = 502,
+    public readonly retryAfterMs?: number
   ) {
     super(message);
     this.name = "TranslationServiceError";
@@ -73,6 +75,14 @@ export async function translateMeetingText(
   try {
     result = await provider.translate({ ...input, text });
   } catch (error) {
+    if (error instanceof TranslationProviderError) {
+      throw new TranslationServiceError(
+        error.code,
+        error.message,
+        error.statusCode,
+        error.retryAfterMs
+      );
+    }
     console.error(
       "[Translation] Provider request failed",
       error instanceof Error ? error.message : "unknown error"

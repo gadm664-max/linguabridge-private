@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { registerAuthRoutes } from "./authRoutes";
 import * as db from "./db";
 import { sdk } from "./_core/sdk";
-import { hashPassword } from "./services/localAuth";
+import { hashPassword, hashRefreshToken } from "./services/localAuth";
 
 vi.mock("./db", () => ({
   getUserByEmail: vi.fn(),
@@ -115,6 +115,43 @@ describe("local authentication routes", () => {
     await expect(duplicate.json()).resolves.toEqual({
       error: { code: "VALIDATION_ERROR", message: "Unable to create account" },
     });
+  });
+
+  it("rotates an active refresh token and revokes the previous hash", async () => {
+    vi.mocked(db.getActiveRefreshToken).mockResolvedValue({
+      token: { tokenHash: hashRefreshToken("old-refresh") },
+      user,
+    } as never);
+    const baseUrl = await startServer();
+    const response = await fetch(`${baseUrl}/auth/refresh`, {
+      method: "POST",
+      headers: { cookie: "linguabridge_refresh=old-refresh" },
+    });
+
+    expect(response.status).toBe(200);
+    expect(db.revokeRefreshToken).toHaveBeenCalledWith(
+      hashRefreshToken("old-refresh"),
+      expect.any(String)
+    );
+    expect(db.createRefreshTokenRecord).toHaveBeenCalledTimes(1);
+    expect(response.headers.get("set-cookie")).toContain(
+      "linguabridge_refresh="
+    );
+  });
+
+  it("rejects an invalid refresh token and clears auth cookies", async () => {
+    vi.mocked(db.getActiveRefreshToken).mockResolvedValue(undefined);
+    const baseUrl = await startServer();
+    const response = await fetch(`${baseUrl}/auth/refresh`, {
+      method: "POST",
+      headers: { cookie: "linguabridge_refresh=invalid" },
+    });
+
+    expect(response.status).toBe(401);
+    expect(response.headers.get("set-cookie")).toContain("app_session_id=");
+    expect(response.headers.get("set-cookie")).toContain(
+      "linguabridge_refresh="
+    );
   });
 
   it("logs in with a hash, rejects wrong credentials, and revokes on logout", async () => {

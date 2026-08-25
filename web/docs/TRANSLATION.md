@@ -32,7 +32,7 @@
 
 تعتمد طبقة التطبيق على `TranslationProvider` فقط. التنفيذ الحالي `ManusLlmTranslationProvider` يستخدم بوابة LLM المضمنة على الخادم، يكتشف نموذجًا متاحًا من قائمة النماذج، ويمرر السياق الاختياري إلى prompt مضبوط. يمكن استبداله لاحقًا بمزود ترجمة متخصص دون تعديل endpoint أو المستهلكين.
 
-النص الوارد يُعامل كمحتوى غير موثوق داخل delimiters واضحة. لا تُسجل قيمة النص أو الترجمة في السجلات التشغيلية. عند فشل المزود لا تُخترع ترجمة بديلة؛ يُعاد خطأ تطبيقي عام مع `requestId` للتتبع.
+النص الوارد يُعامل كمحتوى غير موثوق داخل delimiters واضحة. لا تُسجل قيمة النص أو الترجمة في السجلات التشغيلية. عند فشل المزود لا تُخترع ترجمة بديلة؛ يُعاد خطأ تطبيقي عام مع `requestId` للتتبع. بوابة LLM تستخدم timeout قدره 20 ثانية، وتعيد المحاولة حتى أربع مرات فقط لـ429 و5xx وأخطاء الشبكة، بينما لا تعيد محاولة 4xx الأخرى. لا يُعاد upstream response body إلى العميل.
 
 ## التحقق والأخطاء
 
@@ -44,7 +44,11 @@
 | لغة غير مدعومة | 422 | `UNSUPPORTED_LANGUAGE` |
 | نص يتجاوز 4000 حرف | 413 | `TEXT_TOO_LONG` |
 | عدد طلبات زائد | 429 | `RATE_LIMITED` |
-| فشل أو timeout أو استجابة غير صالحة من المزود | 502 | `PROVIDER_UNAVAILABLE` أو `MALFORMED_PROVIDER_RESPONSE` |
+| فشل مصادقة بوابة المزود | 502 | `AUTHENTICATION_FAILED` |
+| بوابة المزود غير متاحة أو خطأ شبكة | 503 | `NETWORK_FAILURE` أو `UPSTREAM_FAILURE` |
+| timeout من بوابة المزود | 504 | `TIMEOUT` |
+| rate limit من بوابة المزود | 429 | `RATE_LIMITED` مع `Retry-After` |
+| استجابة مزود مشوهة أو بلا نص | 502 | `MALFORMED_RESPONSE` أو `MALFORMED_PROVIDER_RESPONSE` |
 
 ## Translation History
 
@@ -52,7 +56,7 @@
 
 ## الإعداد
 
-اضبط `TRANSLATION_PROVIDER=manus-llm`، ووفر إعدادات بوابة LLM عبر متغيرات الخادم. لا تضع المفتاح في client bundle أو `.env.example` أو Git.
+اضبط `TRANSLATION_PROVIDER=manus-llm`، ووفر `BUILT_IN_FORGE_API_URL` اختياريًا و`BUILT_IN_FORGE_API_KEY` على الخادم. لا تضع المفتاح في client bundle أو `.env.example` أو Git. في production اضبط `APP_ORIGIN` حتى يرفض REST router origins غير المصرح بها؛ الطلبات غير browser يمكنها العمل دون Origin header.
 
 ## الحدود الحالية
 
