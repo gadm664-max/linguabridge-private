@@ -14,6 +14,8 @@ export type MeetingInvitation = MeetingBootstrap & {
   storageConsent: boolean;
 };
 
+export type MeetingHistoryItem = MeetingBootstrap & { createdAt: string | Date };
+
 export async function createNativeMeeting(input: {
   title: string;
   speakingLanguage: string;
@@ -41,6 +43,10 @@ export async function joinNativeMeeting(input: {
   storageConsent: boolean;
 }) {
   return getApi().meetings.join.mutate(input) as Promise<MeetingBootstrap>;
+}
+
+export async function getNativeMeetingHistory() {
+  return getApi().meetings.history.query() as Promise<MeetingHistoryItem[]>;
 }
 
 export async function transcribeRecording(input: {
