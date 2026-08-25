@@ -6,7 +6,9 @@ describe("isLeftToRightMeetingLanguage", () => {
     expect(isLeftToRightMeetingLanguage("ar")).toBe(false);
     expect(isLeftToRightMeetingLanguage("العربية")).toBe(false);
     expect(isLeftToRightMeetingLanguage("en")).toBe(true);
+    expect(isLeftToRightMeetingLanguage("en-US")).toBe(true);
     expect(isLeftToRightMeetingLanguage("English")).toBe(true);
     expect(isLeftToRightMeetingLanguage("Français")).toBe(true);
+    expect(isLeftToRightMeetingLanguage("ar-SA")).toBe(false);
   });
 });
