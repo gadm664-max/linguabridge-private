@@ -35,4 +35,13 @@ describe("minutes access policy", () => {
     await expect(caller.get({ inviteCode: "ABCDEFGH" })).rejects.toMatchObject({ code: "FORBIDDEN" });
     expect(dbMocks.getMinutesForMeeting).not.toHaveBeenCalled();
   });
+
+  it("rejects generation by a non-participant before persistence or generation work", async () => {
+    dbMocks.isMeetingParticipant.mockResolvedValue(false);
+    const caller = minutesRouter.createCaller({ user: { id: 12, name: "غير مشارك" } } as never);
+    await expect(caller.generate({ inviteCode: "ABCDEFGH", targetLanguage: "ar" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(dbMocks.isMeetingPersistenceAllowed).not.toHaveBeenCalled();
+    expect(dbMocks.getTranscriptForMeeting).not.toHaveBeenCalled();
+    expect(dbMocks.saveMinutesForMeeting).not.toHaveBeenCalled();
+  });
 });
