@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { getMeetingForInvite, getMinutesForMeeting, getTranscriptForMeeting, isMeetingPersistenceAllowed, saveMinutesForMeeting } from "../db";
+import { getMeetingForInvite, getMinutesForMeeting, getTranscriptForMeeting, isMeetingParticipant, isMeetingPersistenceAllowed, saveMinutesForMeeting } from "../db";
 import { invokeLLM, listLLMModels } from "../_core/llm";
 import { protectedProcedure, router } from "../_core/trpc";
 
@@ -10,14 +10,16 @@ const inviteInput = z.object({ inviteCode: z.string().trim().toUpperCase().max(1
 function textContent(value: unknown) { return typeof value === "string" ? value : ""; }
 
 export const minutesRouter = router({
-  get: protectedProcedure.input(inviteInput).query(async ({ input }) => {
+  get: protectedProcedure.input(inviteInput).query(async ({ ctx, input }) => {
     const meeting = await getMeetingForInvite(input.inviteCode);
     if (!meeting) throw new TRPCError({ code: "NOT_FOUND", message: "Meeting not found" });
+    if (!(await isMeetingParticipant(meeting.id, ctx.user.id))) throw new TRPCError({ code: "FORBIDDEN", message: "Join the meeting before reading its minutes" });
     return { meeting, minutes: await getMinutesForMeeting(meeting.id), segments: await getTranscriptForMeeting(meeting.id) };
   }),
-  generate: protectedProcedure.input(inviteInput.extend({ targetLanguage: z.string().trim().min(2).max(16) })).mutation(async ({ input }) => {
+  generate: protectedProcedure.input(inviteInput.extend({ targetLanguage: z.string().trim().min(2).max(16) })).mutation(async ({ ctx, input }) => {
     const meeting = await getMeetingForInvite(input.inviteCode);
     if (!meeting) throw new TRPCError({ code: "NOT_FOUND", message: "Meeting not found" });
+    if (!(await isMeetingParticipant(meeting.id, ctx.user.id))) throw new TRPCError({ code: "FORBIDDEN", message: "Join the meeting before generating its minutes" });
     if (!(await isMeetingPersistenceAllowed(meeting.id))) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "All active participants must consent before a meeting record is generated" });
     const segments = await getTranscriptForMeeting(meeting.id);
     if (!segments.length) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No saved transcript segments are available for this meeting" });
