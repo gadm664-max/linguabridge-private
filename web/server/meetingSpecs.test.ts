@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultVoiceProfile, defaultVoiceRate, getLiveTranscriptStatus, getLobbyInviteGuidance, getMuteControlLabel, liveTranscriptCopy, lobbyReadinessCopy, meetingControlCopy, normalizeVoiceProfile, normalizeVoiceRate, supportedLanguages, supportedVoiceProfiles, supportedVoiceRates } from "@linguabridge/contracts/meetingSpecs";
+import { defaultVoiceProfile, defaultVoiceRate, getInviteSharingSessionParam, getLiveTranscriptStatus, getLobbyInviteGuidance, getMuteControlLabel, liveTranscriptCopy, lobbyReadinessCopy, meetingControlCopy, normalizeVoiceProfile, normalizeVoiceRate, supportedLanguages, supportedVoiceProfiles, supportedVoiceRates } from "@linguabridge/contracts/meetingSpecs";
 
 describe("shared meeting specifications", () => {
   it("publishes the same supported language set used by web and mobile clients", () => {
@@ -27,6 +27,8 @@ describe("shared meeting specifications", () => {
     expect(lobbyReadinessCopy.invite.disabled).toContain("أدوات نسخ أو مشاركة");
     expect(getLobbyInviteGuidance(true)).toBe(lobbyReadinessCopy.invite.enabled);
     expect(getLobbyInviteGuidance(false)).toBe(lobbyReadinessCopy.invite.disabled);
+    expect(getInviteSharingSessionParam(true)).toBe("1");
+    expect(getInviteSharingSessionParam(false)).toBe("0");
   });
 
   it("provides the same accessible labels for mute controls", () => {

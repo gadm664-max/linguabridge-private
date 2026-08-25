@@ -5,7 +5,7 @@ import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View
 import { Brand } from "../components/Brand";
 import { GhostButton, PrimaryButton } from "../components/PrimaryButton";
 import { Screen } from "../components/Screen";
-import { getLobbyInviteGuidance, lobbyReadinessCopy, meetingPrivacyDefaults, supportedLanguages } from "../lib/specs";
+import { getInviteSharingSessionParam, getLobbyInviteGuidance, lobbyReadinessCopy, meetingPrivacyDefaults, supportedLanguages } from "../lib/specs";
 import { colors } from "../lib/theme";
 import { createNativeMeeting } from "../lib/meetingService";
 import { getSessionToken, signInWithLinguaBridge } from "../lib/session";
@@ -22,7 +22,7 @@ export default function LobbyScreen() {
       setCreating(true);
       if (!(await getSessionToken())) await signInWithLinguaBridge();
       const meeting = await createNativeMeeting({ title, speakingLanguage: speaking, displayLanguage: display, storageConsent: consent, voiceName: preferences.voiceName, voiceRate: preferences.voiceRate.toFixed(1) });
-      router.push({ pathname: "/meeting", params: { title: meeting.title, speaking, display, inviteCode: meeting.inviteCode, share: inviteEnabled ? "1" : "0" } });
+      router.push({ pathname: "/meeting", params: { title: meeting.title, speaking, display, inviteCode: meeting.inviteCode, share: getInviteSharingSessionParam(inviteEnabled) } });
     } catch (error) {
       Alert.alert("تعذر إنشاء الاجتماع", error instanceof Error ? error.message : "تحقق من إعداد الخدمة وتسجيل الدخول ثم أعد المحاولة.");
     } finally { setCreating(false); }

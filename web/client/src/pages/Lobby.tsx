@@ -12,7 +12,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { startLogin } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { useAudioDevices } from "@/hooks/useAudioDevices";
-import { defaultVoiceProfile, defaultVoiceRate, getLobbyInviteGuidance, lobbyReadinessCopy, supportedLanguages, supportedVoiceProfiles, supportedVoiceRates } from "../../../shared/meetingSpecs";
+import { defaultVoiceProfile, defaultVoiceRate, getInviteSharingSessionParam, getLobbyInviteGuidance, lobbyReadinessCopy, supportedLanguages, supportedVoiceProfiles, supportedVoiceRates } from "../../../shared/meetingSpecs";
 
 const languageOptions = supportedLanguages;
 
@@ -44,7 +44,7 @@ export default function Lobby() {
   const createMeeting = trpc.meetings.create.useMutation({
     onSuccess: meeting => {
       toast.success("أُنشئت الجلسة ورابط الدعوة جاهز للمشاركة.");
-      setLocation(`/meeting/${meeting.inviteCode}?share=${invite ? "1" : "0"}`);
+      setLocation(`/meeting/${meeting.inviteCode}?share=${getInviteSharingSessionParam(invite)}`);
     },
     onError: error => toast.error(error.message || "تعذر إنشاء الجلسة. حاول مرة أخرى."),
   });
