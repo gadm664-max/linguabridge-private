@@ -11,9 +11,9 @@ describe("meeting control accessibility", () => {
     expect(webMeeting).toContain("active?: boolean");
     expect(webMeeting).toContain("active={!muted}");
     expect(webMeeting).toContain("active={recording}");
-    expect(mobileMeeting).toContain("muted && styles.activeControl");
-    expect(mobileMeeting).toContain("listening && styles.activeControl");
-    expect(mobileMeeting).toContain("roomConnected && styles.activeControl");
-    expect(mobileMeeting).toContain("directState && styles.activeControl");
+    expect(mobileMeeting).toContain("active={muted}");
+    expect(mobileMeeting).toContain("active={listening}");
+    expect(mobileMeeting).toContain("active={roomConnected}");
+    expect(mobileMeeting).toContain("active={Boolean(directState)}");
   });
 });
