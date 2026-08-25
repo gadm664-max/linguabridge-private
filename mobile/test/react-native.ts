@@ -1,14 +1,6 @@
-import { createElement } from "react";
+import React from "react";
 
-type HostProps = Record<string, unknown> & { children?: unknown };
-
-function hostComponent(type: string) {
-  return function HostComponent({ children, ...props }: HostProps) {
-    return createElement(type, props, children as never);
-  };
-}
-
-export const View = hostComponent("View");
-export const Text = hostComponent("Text");
-export const Switch = hostComponent("Switch");
+export const View = (props: Record<string, unknown>) => React.createElement("View", props, props.children as React.ReactNode);
+export const Text = (props: Record<string, unknown>) => React.createElement("Text", props, props.children as React.ReactNode);
+export const Pressable = (props: Record<string, unknown>) => React.createElement("Pressable", props, props.children as React.ReactNode);
 export const StyleSheet = { create: <T,>(styles: T) => styles };
