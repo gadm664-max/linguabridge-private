@@ -1,4 +1,6 @@
-const languageCodes = new Set(["ar", "en", "fr", "es", "de", "it", "pt", "tr", "ja", "ko", "zh"]);
+import { defaultVoiceRate, normalizeVoiceRate, supportedLanguages } from "@linguabridge/contracts/meetingSpecs";
+
+const languageCodes = new Set<string>(supportedLanguages.map(language => language.code));
 
 export type MobilePreferences = {
   speechLanguage: string;
@@ -11,7 +13,7 @@ export type MobilePreferences = {
 export const defaultMobilePreferences: MobilePreferences = {
   speechLanguage: "ar",
   displayLanguage: "en",
-  voiceRate: 1,
+  voiceRate: defaultVoiceRate,
   askBeforeStorage: true,
   meetingReminders: true,
 };
@@ -23,7 +25,7 @@ export function normalizeMobilePreferences(value: unknown): MobilePreferences {
   return {
     speechLanguage: typeof input.speechLanguage === "string" && languageCodes.has(input.speechLanguage) ? input.speechLanguage : defaultMobilePreferences.speechLanguage,
     displayLanguage: typeof input.displayLanguage === "string" && languageCodes.has(input.displayLanguage) ? input.displayLanguage : defaultMobilePreferences.displayLanguage,
-    voiceRate: Math.max(0.7, Math.min(rate, 1.4)),
+    voiceRate: normalizeVoiceRate(rate),
     askBeforeStorage: typeof input.askBeforeStorage === "boolean" ? input.askBeforeStorage : defaultMobilePreferences.askBeforeStorage,
     meetingReminders: typeof input.meetingReminders === "boolean" ? input.meetingReminders : defaultMobilePreferences.meetingReminders,
   };

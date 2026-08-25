@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Slider } from "@/components/ui/slider";
 import { ArrowLeft, Check, ChevronLeft, Headphones, LockKeyhole, Mic2, MonitorUp, Play, Settings2, ShieldCheck, UserRoundPlus, Volume2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -13,7 +12,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { startLogin } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { useAudioDevices } from "@/hooks/useAudioDevices";
-import { supportedLanguages } from "../../../shared/meetingSpecs";
+import { defaultVoiceRate, supportedLanguages, supportedVoiceRates } from "../../../shared/meetingSpecs";
 
 const languageOptions = supportedLanguages;
 
@@ -36,7 +35,7 @@ export default function Lobby() {
   const [speakingLanguage, setSpeakingLanguage] = useState("ar");
   const [displayLanguage, setDisplayLanguage] = useState("en");
   const [voice, setVoice] = useState("natural");
-  const [rate, setRate] = useState([1]);
+  const [rate, setRate] = useState(defaultVoiceRate);
   const [micOn, setMicOn] = useState(true);
   const [consent, setConsent] = useState(false);
   const [invite, setInvite] = useState(true);
@@ -66,7 +65,7 @@ export default function Lobby() {
       speakingLanguage,
       displayLanguage,
       voiceName: voice,
-      voiceRate: rate[0].toFixed(1),
+      voiceRate: rate.toFixed(1),
     });
   };
 
@@ -80,7 +79,7 @@ export default function Lobby() {
             <div className="flex items-start justify-between gap-4"><div><p className="text-xs font-bold tracking-wide text-indigo-600">جاهزية الصوت</p><h1 className="mt-1 text-2xl font-bold tracking-[-.045em] text-slate-900">لنضبط تجربتك</h1></div><span className="grid h-11 w-11 place-items-center rounded-2xl bg-indigo-50 text-indigo-600"><Settings2 className="h-5 w-5" /></span></div>
             <div className="mt-7 space-y-7">
               <div className="rounded-2xl border border-slate-100 bg-slate-50/80 p-4"><div className="flex items-center justify-between"><div className="flex items-center gap-3"><span className={`grid h-10 w-10 place-items-center rounded-xl ${micOn ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-500"}`}><Mic2 className="h-5 w-5" /></span><div><p className="text-sm font-bold text-slate-800">اختيار الميكروفون</p><p className="mt-0.5 text-xs text-slate-500">يُحدّث المتصفح القائمة تلقائيًا عند توصيل جهاز جديد.</p></div></div><button type="button" onClick={() => setMicOn(v => !v)} className={`rounded-full px-3 py-1.5 text-xs font-bold ${micOn ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-600"}`}>{micOn ? "نشط" : "مكتوم"}</button></div><div className="mt-4 grid gap-2"><Select value={audioDevices.selectedInput} onValueChange={audioDevices.setSelectedInput}><SelectTrigger className="h-10 rounded-xl bg-white text-xs"><SelectValue placeholder="الميكروفون الافتراضي" /></SelectTrigger><SelectContent>{audioDevices.inputs.length ? audioDevices.inputs.map(device => <SelectItem key={device.deviceId} value={device.deviceId}>{device.label}</SelectItem>) : <SelectItem value="default-input">الميكروفون الافتراضي</SelectItem>}</SelectContent></Select><Select value={audioDevices.selectedOutput} onValueChange={audioDevices.setSelectedOutput}><SelectTrigger className="h-10 rounded-xl bg-white text-xs"><SelectValue placeholder="السماعة الافتراضية" /></SelectTrigger><SelectContent>{audioDevices.outputs.length ? audioDevices.outputs.map(device => <SelectItem key={device.deviceId} value={device.deviceId}>{device.label}</SelectItem>) : <SelectItem value="default-output">السماعة الافتراضية</SelectItem>}</SelectContent></Select></div><div className="mt-3 flex items-center gap-3 rounded-xl bg-white px-3 py-2.5"><AudioBars active={audioDevices.isTesting || micOn} color="emerald" /><span className="mr-auto text-xs font-semibold text-slate-500">{audioDevices.isTesting ? "اختبار الإشارة جارٍ…" : "اختبر الميكروفون للتأكد من الإشارة"}</span></div><Button variant="ghost" onClick={async () => { const started = await audioDevices.testMicrophone(); if (started) toast.success("بدأ اختبار الميكروفون. تحدث الآن للتحقق من الإشارة."); else if (audioDevices.error) toast.error(audioDevices.error); }} className="mt-2 h-auto px-1 text-xs font-bold text-indigo-600 hover:bg-transparent hover:text-indigo-800"><Play className="ml-1 h-3.5 w-3.5 fill-current" />اختبار الميكروفون</Button>{audioDevices.error && <p className="mt-1 text-[11px] leading-5 text-rose-600">{audioDevices.error}</p>}</div>
-              <div className="rounded-2xl border border-slate-100 p-4"><div className="flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-xl bg-violet-50 text-violet-600"><Headphones className="h-5 w-5" /></span><div><p className="text-sm font-bold text-slate-800">قراءة الترجمة</p><p className="mt-0.5 text-xs text-slate-500">يُقرأ النص بعد ترجمته بلغتك المختارة</p></div></div><div className="mt-4 grid gap-3 sm:grid-cols-2"><Select value={voice} onValueChange={setVoice}><SelectTrigger className="h-11 rounded-xl"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="natural">صوت طبيعي — ندى</SelectItem><SelectItem value="warm">صوت دافئ — سلمى</SelectItem><SelectItem value="clear">صوت واضح — ليلى</SelectItem></SelectContent></Select><Button variant="outline" onClick={() => toast.info("هذا نموذج صوتي؛ سيتم تشغيل الصوت المختار بعد ربط خدمة القراءة الصوتية.")} className="h-11 rounded-xl"><Volume2 className="ml-2 h-4 w-4" />معاينة الصوت</Button></div><div className="mt-5"><div className="mb-3 flex items-center justify-between text-xs font-bold text-slate-600"><span>سرعة الإلقاء</span><span>{rate[0].toFixed(1)}×</span></div><Slider value={rate} min={0.7} max={1.4} step={0.1} onValueChange={setRate} /></div></div>
+              <div className="rounded-2xl border border-slate-100 p-4"><div className="flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-xl bg-violet-50 text-violet-600"><Headphones className="h-5 w-5" /></span><div><p className="text-sm font-bold text-slate-800">قراءة الترجمة</p><p className="mt-0.5 text-xs text-slate-500">يُقرأ النص بعد ترجمته بلغتك المختارة</p></div></div><div className="mt-4 grid gap-3 sm:grid-cols-2"><Select value={voice} onValueChange={setVoice}><SelectTrigger className="h-11 rounded-xl"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="natural">صوت طبيعي — ندى</SelectItem><SelectItem value="warm">صوت دافئ — سلمى</SelectItem><SelectItem value="clear">صوت واضح — ليلى</SelectItem></SelectContent></Select><Button variant="outline" onClick={() => toast.info("هذا نموذج صوتي؛ سيتم تشغيل الصوت المختار بعد ربط خدمة القراءة الصوتية.")} className="h-11 rounded-xl"><Volume2 className="ml-2 h-4 w-4" />معاينة الصوت</Button></div><div className="mt-5"><Label className="text-xs font-bold text-slate-600">سرعة الإلقاء</Label><Select value={rate.toFixed(1)} onValueChange={value => setRate(Number(value))}><SelectTrigger className="mt-2 h-10 rounded-xl text-xs"><SelectValue /></SelectTrigger><SelectContent>{supportedVoiceRates.map(option => <SelectItem key={option.value} value={option.value.toFixed(1)}>{option.label}</SelectItem>)}</SelectContent></Select></div></div>
               <div className="rounded-2xl border border-indigo-100 bg-indigo-50/60 p-4"><div className="flex gap-3"><ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-indigo-600" /><p className="text-xs leading-6 text-slate-600">لن تبدأ المنصة حفظ النص أو الصوت إلا وفق موافقتك. يمكنك تغيير إذن الحفظ من أدوات الاجتماع في أي وقت.</p></div></div>
             </div>
           </section>

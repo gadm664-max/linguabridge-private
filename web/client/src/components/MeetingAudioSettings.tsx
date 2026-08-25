@@ -3,14 +3,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { calculateAudioLevel } from "@/lib/audioInput";
+import { supportedLanguages } from "../../../shared/meetingSpecs";
 
 type AudioInput = { id: string; label: string };
-
-const languageOptions = [
-  { value: "ar", label: "العربية" },
-  { value: "en", label: "English" },
-  { value: "fr", label: "Français" },
-] as const;
 
 export default function MeetingAudioSettings({
   onClose,
@@ -115,8 +110,8 @@ export default function MeetingAudioSettings({
       <button type="button" onClick={onClose} className="grid h-8 w-8 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="إغلاق إعدادات الصوت"><X className="h-4 w-4" /></button>
     </div>
     <div className="grid gap-4 p-4 md:grid-cols-2">
-      <label className="block"><span className="text-xs font-bold text-slate-700">لغة حديثي</span><Select value={speechLanguage} onValueChange={onSpeechLanguageChange}><SelectTrigger className="mt-2 h-10 rounded-xl text-xs"><SelectValue /></SelectTrigger><SelectContent>{languageOptions.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select></label>
-      <label className="block"><span className="text-xs font-bold text-slate-700">لغة الترجمة المعروضة</span><Select value={displayLanguage} onValueChange={onDisplayLanguageChange}><SelectTrigger className="mt-2 h-10 rounded-xl text-xs"><SelectValue /></SelectTrigger><SelectContent>{languageOptions.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select></label>
+      <label className="block"><span className="text-xs font-bold text-slate-700">لغة حديثي</span><Select value={speechLanguage} onValueChange={onSpeechLanguageChange}><SelectTrigger className="mt-2 h-10 rounded-xl text-xs"><SelectValue /></SelectTrigger><SelectContent>{supportedLanguages.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select></label>
+      <label className="block"><span className="text-xs font-bold text-slate-700">لغة الترجمة المعروضة</span><Select value={displayLanguage} onValueChange={onDisplayLanguageChange}><SelectTrigger className="mt-2 h-10 rounded-xl text-xs"><SelectValue /></SelectTrigger><SelectContent>{supportedLanguages.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select></label>
     </div>
     <div className="border-t border-slate-100 p-4">
       <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="flex items-center gap-2 text-xs font-bold text-slate-800"><Mic className="h-4 w-4 text-indigo-600" />جهاز إدخال الميكروفون</p><p className="mt-1 text-[11px] text-slate-500">يُستخدم لاختبار الإذن ومستوى الصوت على جهازك.</p></div><Button onClick={() => testing ? stopTest() : void startTest()} variant={testing ? "outline" : "default"} className={testing ? "h-9 rounded-xl border-rose-200 text-xs text-rose-700 hover:bg-rose-50" : "h-9 rounded-xl bg-slate-950 text-xs hover:bg-slate-800"}>{testing ? <><MicOff className="ml-1.5 h-4 w-4" />إيقاف الاختبار</> : <><Headphones className="ml-1.5 h-4 w-4" />اختبار الميكروفون</>}</Button></div>
