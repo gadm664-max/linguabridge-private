@@ -1,3 +1,4 @@
+import React from "react";
 import { act, create } from "react-test-renderer";
 import { describe, expect, it, vi } from "vitest";
 
@@ -26,5 +27,24 @@ describe("MeetingScreen control accessibility", () => {
     const liveStatus = renderer!.root.find(node => String(node.type) === "View" && node.props.accessibilityLiveRegion === "polite");
     expect(liveStatus.props.accessibilityRole).toBe("text");
     expect(liveStatus.props.accessibilityLabel).toBe("النص الحي متوقف");
+  });
+
+  it("aligns original and translated segments with their own Arabic or Latin direction", () => {
+    (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    let renderer: ReturnType<typeof create>;
+    act(() => { renderer = create(<MeetingScreen />); });
+    const list = renderer!.root.find(node => String(node.type) === "FlatList");
+    const getSegmentTextStyles = (index: number) => {
+      const segment = list.props.renderItem({ item: list.props.data[index] }) as React.ReactElement<{ children: React.ReactNode }>;
+      const [, dual] = React.Children.toArray(segment.props.children) as React.ReactElement<{ children: React.ReactNode }>[];
+      const [original, translated] = React.Children.toArray(dual.props.children) as React.ReactElement<{ style: unknown }>[];
+      return { original: original.props.style, translated: translated.props.style };
+    };
+    const arabicToEnglish = getSegmentTextStyles(0);
+    const englishToArabic = getSegmentTextStyles(1);
+    expect(arabicToEnglish.original).toEqual(expect.arrayContaining([expect.objectContaining({ textAlign: "right" })]));
+    expect(arabicToEnglish.translated).toEqual(expect.arrayContaining([expect.objectContaining({ textAlign: "left" })]));
+    expect(englishToArabic.original).toEqual(expect.arrayContaining([expect.objectContaining({ textAlign: "left" })]));
+    expect(englishToArabic.translated).toEqual(expect.arrayContaining([expect.objectContaining({ textAlign: "right" })]));
   });
 });
