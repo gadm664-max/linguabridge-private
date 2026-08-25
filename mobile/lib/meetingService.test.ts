@@ -8,7 +8,7 @@ vi.mock("./api", () => ({
   getApi: () => ({ meetings: { byInvite: { query }, join: { mutate } } }),
 }));
 
-import { getNativeMeetingInvitation, joinNativeMeeting } from "./meetingService";
+import { getNativeMeetingInvitation, joinNativeMeeting, type MeetingBootstrap } from "./meetingService";
 
 describe("native meeting join service", () => {
   beforeEach(() => {
@@ -25,5 +25,10 @@ describe("native meeting join service", () => {
 
     expect(query).toHaveBeenCalledWith({ inviteCode: "ABCD2345" });
     expect(mutate).toHaveBeenCalledWith(expect.objectContaining({ inviteCode: "ABCD2345", storageConsent: true }));
+  });
+
+  it("uses the shared meeting status type for native meeting results", () => {
+    const meeting: MeetingBootstrap = { inviteCode: "ABCD2345", title: "مراجعة", status: "lobby", inviteSharingEnabled: true };
+    expect(meeting.status).toBe("lobby");
   });
 });

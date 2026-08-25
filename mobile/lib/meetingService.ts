@@ -1,11 +1,12 @@
 import * as FileSystem from "expo-file-system/legacy";
+import type { MeetingStatus } from "@linguabridge/contracts/meetingSpecs";
 import { getApi } from "./api";
 import { requireInviteCode } from "./meetingGuards";
 
 export type MeetingBootstrap = {
   inviteCode: string;
   title: string;
-  status: string;
+  status: MeetingStatus;
   inviteSharingEnabled: boolean;
 };
 
