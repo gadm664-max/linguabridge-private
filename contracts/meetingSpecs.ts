@@ -96,3 +96,15 @@ export const microphoneMuteControlCopy = {
 export function getMicrophoneMuteControlCopy(muted: boolean) {
   return microphoneMuteControlCopy[muted ? "muted" : "unmuted"];
 }
+
+export type LiveTranscriptionState = "idle" | "listening" | "processing";
+
+export const liveTranscriptionStatusCopy: Record<LiveTranscriptionState, string> = {
+  idle: "النص الحي متوقف",
+  listening: "النص الحي يعمل",
+  processing: "جارٍ النسخ والترجمة…",
+};
+
+export function getLiveTranscriptionStatus(state: LiveTranscriptionState) {
+  return liveTranscriptionStatusCopy[state];
+}

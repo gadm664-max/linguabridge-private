@@ -1,9 +1,11 @@
 export {
   defaultVoiceRate,
+  getLiveTranscriptionStatus,
   getMicrophoneMuteControlCopy,
   meetingPrivacyDefaults,
   meetingStateLabels,
   microphoneMuteControlCopy,
+  liveTranscriptionStatusCopy,
   defaultVoiceProfile,
   getLobbyInviteGuidance,
   lobbyReadinessCopy,
@@ -13,4 +15,4 @@ export {
   supportedVoiceProfiles,
   supportedVoiceRates,
 } from "@linguabridge/contracts/meetingSpecs";
-export type { LobbyInviteState, MeetingLanguageCode, MeetingStatus, VoiceProfileCode } from "@linguabridge/contracts/meetingSpecs";
+export type { LiveTranscriptionState, LobbyInviteState, MeetingLanguageCode, MeetingStatus, VoiceProfileCode } from "@linguabridge/contracts/meetingSpecs";

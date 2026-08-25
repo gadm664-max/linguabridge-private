@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultVoiceProfile, defaultVoiceRate, getLobbyInviteGuidance, getMicrophoneMuteControlCopy, lobbyReadinessCopy, normalizeVoiceProfile, normalizeVoiceRate, supportedLanguages, supportedVoiceProfiles, supportedVoiceRates } from "@linguabridge/contracts/meetingSpecs";
+import { defaultVoiceProfile, defaultVoiceRate, getLiveTranscriptionStatus, getLobbyInviteGuidance, getMicrophoneMuteControlCopy, lobbyReadinessCopy, normalizeVoiceProfile, normalizeVoiceRate, supportedLanguages, supportedVoiceProfiles, supportedVoiceRates } from "@linguabridge/contracts/meetingSpecs";
 
 describe("shared meeting specifications", () => {
   it("publishes the same supported language set used by web and mobile clients", () => {
@@ -33,5 +33,11 @@ describe("shared meeting specifications", () => {
   it("defines one accessible mute-control meaning for web and mobile", () => {
     expect(getMicrophoneMuteControlCopy(false)).toEqual({ label: "كتم الصوت", active: false });
     expect(getMicrophoneMuteControlCopy(true)).toEqual({ label: "إلغاء كتم الصوت", active: true });
+  });
+
+  it("defines shared live-transcription statuses for idle, listening, and processing", () => {
+    expect(getLiveTranscriptionStatus("idle")).toBe("النص الحي متوقف");
+    expect(getLiveTranscriptionStatus("listening")).toBe("النص الحي يعمل");
+    expect(getLiveTranscriptionStatus("processing")).toBe("جارٍ النسخ والترجمة…");
   });
 });
