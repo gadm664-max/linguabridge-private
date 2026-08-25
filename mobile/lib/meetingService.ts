@@ -13,6 +13,14 @@ export type MeetingInviteDetails = MeetingBootstrap & {
   storageConsent: boolean;
 };
 
+export type NativeMeetingHistoryItem = {
+  id: number;
+  inviteCode: string;
+  title: string;
+  status: "lobby" | "active" | "ended";
+  createdAt: Date | string | number;
+};
+
 export async function createNativeMeeting(input: {
   title: string;
   speakingLanguage: string;
@@ -31,6 +39,10 @@ export async function getNativeMeetingForInvite(inviteCode: string) {
   return getApi().meetings.byInvite.query({
     inviteCode: requireInviteCode(inviteCode),
   }) as Promise<MeetingInviteDetails>;
+}
+
+export async function getNativeMeetingHistory() {
+  return getApi().meetings.history.query() as Promise<NativeMeetingHistoryItem[]>;
 }
 
 export async function transcribeRecording(input: {
