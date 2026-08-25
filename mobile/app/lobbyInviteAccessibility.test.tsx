@@ -17,12 +17,17 @@ vi.mock("../lib/preferences", () => ({
 import LobbyScreen from "./lobby";
 
 describe("LobbyScreen invite sharing accessibility", () => {
-  it("labels the invite-sharing switch and exposes its enabled state", () => {
+  it("labels the invite-sharing switch and updates its state and shared guidance", () => {
     (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
     let renderer: ReturnType<typeof create>;
     act(() => { renderer = create(<LobbyScreen />); });
     const inviteSwitch = renderer!.root.find(node => String(node.type) === "Switch" && node.props.accessibilityLabel === "تفعيل أو إيقاف أدوات مشاركة رابط الدعوة");
     expect(inviteSwitch.props.accessibilityRole).toBe("switch");
     expect(inviteSwitch.props.accessibilityState).toEqual({ checked: true });
+    act(() => { inviteSwitch.props.onValueChange(false); });
+    const disabledSwitch = renderer!.root.find(node => String(node.type) === "Switch" && node.props.accessibilityLabel === "تفعيل أو إيقاف أدوات مشاركة رابط الدعوة");
+    expect(disabledSwitch.props.accessibilityState).toEqual({ checked: false });
+    const guidance = renderer!.root.findAll(node => String(node.type) === "Text").flatMap(node => node.children).join("");
+    expect(guidance).toContain("رمز الانضمام صالحًا");
   });
 });
