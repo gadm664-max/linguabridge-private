@@ -82,6 +82,18 @@ export function getLobbyInviteGuidance(enabled: boolean) {
   return lobbyReadinessCopy.invite[enabled ? "enabled" : "disabled"];
 }
 
+export const meetingControlCopy = {
+  audio: {
+    mute: "كتم الصوت",
+    unmute: "إلغاء كتم الصوت",
+    deviceTest: "اختبار جهاز الصوت",
+  },
+} as const;
+
+export function getMuteControlLabel(muted: boolean) {
+  return muted ? meetingControlCopy.audio.unmute : meetingControlCopy.audio.mute;
+}
+
 export const meetingStateLabels: Record<MeetingStatus, string> = {
   lobby: "في الردهة",
   active: "نشطة",
