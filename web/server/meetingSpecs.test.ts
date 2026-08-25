@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultVoiceRate, normalizeVoiceRate, supportedLanguages, supportedVoiceRates } from "@linguabridge/contracts/meetingSpecs";
+import { defaultVoiceProfile, defaultVoiceRate, normalizeVoiceProfile, normalizeVoiceRate, supportedLanguages, supportedVoiceProfiles, supportedVoiceRates } from "@linguabridge/contracts/meetingSpecs";
 
 describe("shared meeting specifications", () => {
   it("publishes the same supported language set used by web and mobile clients", () => {
@@ -11,5 +11,12 @@ describe("shared meeting specifications", () => {
     expect(defaultVoiceRate).toBe(1);
     expect(normalizeVoiceRate(9)).toBe(1.4);
     expect(normalizeVoiceRate(0)).toBe(0.7);
+  });
+
+  it("publishes stable readable voice profiles for both clients", () => {
+    expect(supportedVoiceProfiles.map(profile => profile.value)).toEqual(["natural", "warm", "clear"]);
+    expect(defaultVoiceProfile).toBe("natural");
+    expect(normalizeVoiceProfile("warm")).toBe("warm");
+    expect(normalizeVoiceProfile("unknown")).toBe("natural");
   });
 });

@@ -1,6 +1,6 @@
 import { router } from "expo-router";
 import { AudioModule, setAudioModeAsync } from "expo-audio";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
 import { Brand } from "../components/Brand";
 import { GhostButton, PrimaryButton } from "../components/PrimaryButton";
@@ -9,17 +9,19 @@ import { meetingPrivacyDefaults, supportedLanguages } from "../lib/specs";
 import { colors } from "../lib/theme";
 import { createNativeMeeting } from "../lib/meetingService";
 import { getSessionToken, signInWithLinguaBridge } from "../lib/session";
+import { defaultMobilePreferences, loadMobilePreferences } from "../lib/preferences";
 
 function LanguagePicker({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) { return <View><Text style={styles.label}>{label}</Text><View style={styles.picker}>{supportedLanguages.map(language => <Pressable key={language.code} onPress={() => onChange(language.code)} style={[styles.choice, value === language.code && styles.selectedChoice]}><Text style={[styles.choiceText, value === language.code && styles.selectedText]}>{language.label}</Text></Pressable>)}</View></View>; }
 
 export default function LobbyScreen() {
-  const [title, setTitle] = useState("اجتماع جديد متعدد اللغات"); const [speaking, setSpeaking] = useState("ar"); const [display, setDisplay] = useState("en"); const [consent, setConsent] = useState(false); const [tested, setTested] = useState(false); const [creating, setCreating] = useState(false);
+  const [title, setTitle] = useState("اجتماع جديد متعدد اللغات"); const [speaking, setSpeaking] = useState(defaultMobilePreferences.speechLanguage); const [display, setDisplay] = useState(defaultMobilePreferences.displayLanguage); const [preferences, setPreferences] = useState(defaultMobilePreferences); const [consent, setConsent] = useState(false); const [tested, setTested] = useState(false); const [creating, setCreating] = useState(false);
+  useEffect(() => { void loadMobilePreferences().then(next => { setPreferences(next); setSpeaking(next.speechLanguage); setDisplay(next.displayLanguage); }); }, []);
   const start = async () => {
     if (meetingPrivacyDefaults.requiresExplicitConsent && !consent) { Alert.alert("موافقة مطلوبة", "أكّد موافقتك قبل تفعيل حفظ النص والمحضر."); return; }
     try {
       setCreating(true);
       if (!(await getSessionToken())) await signInWithLinguaBridge();
-      const meeting = await createNativeMeeting({ title, speakingLanguage: speaking, displayLanguage: display, storageConsent: consent });
+      const meeting = await createNativeMeeting({ title, speakingLanguage: speaking, displayLanguage: display, storageConsent: consent, voiceName: preferences.voiceName, voiceRate: preferences.voiceRate.toFixed(1) });
       router.push({ pathname: "/meeting", params: { title: meeting.title, speaking, display, inviteCode: meeting.inviteCode } });
     } catch (error) {
       Alert.alert("تعذر إنشاء الاجتماع", error instanceof Error ? error.message : "تحقق من إعداد الخدمة وتسجيل الدخول ثم أعد المحاولة.");

@@ -4,13 +4,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CheckCircle2, Languages, LockKeyhole, Mic2, UsersRound } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useLocation, useRoute } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { startLogin } from "@/const";
 import { trpc } from "@/lib/trpc";
-import { supportedLanguages } from "../../../shared/meetingSpecs";
+import { defaultVoiceProfile, defaultVoiceRate, supportedLanguages } from "../../../shared/meetingSpecs";
 
 export default function Join() {
   const [, setLocation] = useLocation();
@@ -19,17 +19,28 @@ export default function Join() {
   const { user, loading } = useAuth();
   const [speakingLanguage, setSpeakingLanguage] = useState("ar");
   const [displayLanguage, setDisplayLanguage] = useState("en");
+  const [voiceName, setVoiceName] = useState(defaultVoiceProfile);
+  const [voiceRate, setVoiceRate] = useState(defaultVoiceRate.toFixed(1));
   const [consent, setConsent] = useState(false);
+  const preferences = trpc.meetings.preferences.get.useQuery(undefined, { enabled: Boolean(user) });
   const meeting = trpc.meetings.byInvite.useQuery({ inviteCode }, { enabled: Boolean(inviteCode) });
   const join = trpc.meetings.join.useMutation({
     onSuccess: () => { toast.success("انضممت إلى الاجتماع. أهلاً بك."); setLocation(`/meeting/${inviteCode}`); },
     onError: error => toast.error(error.message || "تعذر الانضمام إلى الجلسة."),
   });
 
+  useEffect(() => {
+    if (!preferences.data) return;
+    setSpeakingLanguage(preferences.data.speakingLanguage);
+    setDisplayLanguage(preferences.data.displayLanguage);
+    setVoiceName(preferences.data.voiceName);
+    setVoiceRate(preferences.data.voiceRate);
+  }, [preferences.data]);
+
   const submit = () => {
     if (!user) { toast.info("سجّل الدخول أولًا للانضمام إلى الجلسة بصورة آمنة."); startLogin(); return; }
     if (meeting.data?.storageConsent && !consent) { toast.error("يلزم تأكيد موافقتك قبل حفظ أي محتوى في هذه الجلسة."); return; }
-    join.mutate({ inviteCode, speakingLanguage, displayLanguage, voiceName: "natural", voiceRate: "1.0", storageConsent: consent });
+    join.mutate({ inviteCode, speakingLanguage, displayLanguage, voiceName, voiceRate, storageConsent: consent });
   };
 
   if (meeting.isLoading || loading) return <div className="min-h-screen bg-slate-50"><AppNavigation /><main className="mx-auto grid max-w-xl place-items-center px-4 py-28"><div className="rounded-[24px] border border-slate-200 bg-white p-8 text-center shadow-sm"><div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-indigo-100 border-t-indigo-600" /><p className="mt-4 text-sm font-bold text-slate-700">نتحقق من رابط الدعوة…</p></div></main></div>;

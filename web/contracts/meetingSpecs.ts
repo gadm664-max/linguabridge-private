@@ -32,6 +32,21 @@ export function normalizeVoiceRate(value: number) {
   return Math.max(0.7, Math.min(value, 1.4));
 }
 
+export const supportedVoiceProfiles = [
+  { value: "natural", label: "نمط طبيعي" },
+  { value: "warm", label: "نمط دافئ" },
+  { value: "clear", label: "نمط واضح" },
+] as const;
+
+export type VoiceProfileCode = (typeof supportedVoiceProfiles)[number]["value"];
+export const defaultVoiceProfile = "natural" satisfies VoiceProfileCode;
+
+export function normalizeVoiceProfile(value: unknown): VoiceProfileCode {
+  return typeof value === "string" && supportedVoiceProfiles.some(profile => profile.value === value)
+    ? value as VoiceProfileCode
+    : defaultVoiceProfile;
+}
+
 export const meetingPrivacyDefaults = {
   confirmStoragePerMeeting: true,
   meetingReminders: true,

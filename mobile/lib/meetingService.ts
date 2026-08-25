@@ -13,11 +13,11 @@ export async function createNativeMeeting(input: {
   speakingLanguage: string;
   displayLanguage: string;
   storageConsent: boolean;
+  voiceName: string;
+  voiceRate: string;
 }) {
   return getApi().meetings.create.mutate({
     ...input,
-    voiceName: "natural",
-    voiceRate: "1.0",
   }) as Promise<MeetingBootstrap>;
 }
 
