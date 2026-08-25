@@ -1,14 +1,74 @@
 export const supportedLanguages = [
-  { code: "ar", value: "ar", label: "العربية", locale: "ar-SA", direction: "rtl" },
-  { code: "en", value: "en", label: "English", locale: "en-US", direction: "ltr" },
-  { code: "fr", value: "fr", label: "Français", locale: "fr-FR", direction: "ltr" },
-  { code: "es", value: "es", label: "Español", locale: "es-ES", direction: "ltr" },
-  { code: "de", value: "de", label: "Deutsch", locale: "de-DE", direction: "ltr" },
-  { code: "it", value: "it", label: "Italiano", locale: "it-IT", direction: "ltr" },
-  { code: "pt", value: "pt", label: "Português", locale: "pt-PT", direction: "ltr" },
-  { code: "tr", value: "tr", label: "Türkçe", locale: "tr-TR", direction: "ltr" },
-  { code: "ja", value: "ja", label: "日本語", locale: "ja-JP", direction: "ltr" },
-  { code: "ko", value: "ko", label: "한국어", locale: "ko-KR", direction: "ltr" },
+  {
+    code: "ar",
+    value: "ar",
+    label: "العربية",
+    locale: "ar-SA",
+    direction: "rtl",
+  },
+  {
+    code: "en",
+    value: "en",
+    label: "English",
+    locale: "en-US",
+    direction: "ltr",
+  },
+  {
+    code: "fr",
+    value: "fr",
+    label: "Français",
+    locale: "fr-FR",
+    direction: "ltr",
+  },
+  {
+    code: "es",
+    value: "es",
+    label: "Español",
+    locale: "es-ES",
+    direction: "ltr",
+  },
+  {
+    code: "de",
+    value: "de",
+    label: "Deutsch",
+    locale: "de-DE",
+    direction: "ltr",
+  },
+  {
+    code: "it",
+    value: "it",
+    label: "Italiano",
+    locale: "it-IT",
+    direction: "ltr",
+  },
+  {
+    code: "pt",
+    value: "pt",
+    label: "Português",
+    locale: "pt-PT",
+    direction: "ltr",
+  },
+  {
+    code: "tr",
+    value: "tr",
+    label: "Türkçe",
+    locale: "tr-TR",
+    direction: "ltr",
+  },
+  {
+    code: "ja",
+    value: "ja",
+    label: "日本語",
+    locale: "ja-JP",
+    direction: "ltr",
+  },
+  {
+    code: "ko",
+    value: "ko",
+    label: "한국어",
+    locale: "ko-KR",
+    direction: "ltr",
+  },
   { code: "zh", value: "zh", label: "中文", locale: "zh-CN", direction: "ltr" },
 ] as const;
 
@@ -42,8 +102,9 @@ export type VoiceProfileCode = (typeof supportedVoiceProfiles)[number]["value"];
 export const defaultVoiceProfile = "natural" satisfies VoiceProfileCode;
 
 export function normalizeVoiceProfile(value: unknown): VoiceProfileCode {
-  return typeof value === "string" && supportedVoiceProfiles.some(profile => profile.value === value)
-    ? value as VoiceProfileCode
+  return typeof value === "string" &&
+    supportedVoiceProfiles.some(profile => profile.value === value)
+    ? (value as VoiceProfileCode)
     : defaultVoiceProfile;
 }
 
@@ -67,7 +128,8 @@ export const lobbyReadinessCopy = {
   invite: {
     title: "إرسال رابط دعوة",
     enabled: "يمكنك نسخ الرابط ومشاركته بعد فتح الجلسة.",
-    disabled: "لن تُعرض أدوات مشاركة الرابط في هذه الجلسة؛ يظل رمز الانضمام صالحًا للمشاركين المصرح لهم.",
+    disabled:
+      "لن تُعرض أدوات مشاركة الرابط في هذه الجلسة؛ يظل رمز الانضمام صالحًا للمشاركين المصرح لهم.",
   },
   consent: {
     title: "أوافق على حفظ النص المترجم ومحضر الاجتماع.",
@@ -77,6 +139,10 @@ export const lobbyReadinessCopy = {
 } as const;
 
 export type LobbyInviteState = "enabled" | "disabled";
+
+export function getInviteSharingSessionParam(enabled: boolean) {
+  return enabled ? "1" : "0";
+}
 
 export function getLobbyInviteGuidance(enabled: boolean) {
   return lobbyReadinessCopy.invite[enabled ? "enabled" : "disabled"];
@@ -99,7 +165,10 @@ export function getMicrophoneMuteControlCopy(muted: boolean) {
 
 export type LiveTranscriptionState = "idle" | "listening" | "processing";
 
-export const liveTranscriptionStatusCopy: Record<LiveTranscriptionState, string> = {
+export const liveTranscriptionStatusCopy: Record<
+  LiveTranscriptionState,
+  string
+> = {
   idle: "النص الحي متوقف",
   listening: "النص الحي يعمل",
   processing: "جارٍ النسخ والترجمة…",
