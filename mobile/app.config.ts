@@ -12,6 +12,7 @@ const config: ExpoConfig & { newArchEnabled?: boolean } = {
   android: { package: "space.manus.linguabridge.mobile", versionCode: 1, permissions: ["RECORD_AUDIO"] },
   extra: {
     apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL ?? "",
+    webBaseUrl: process.env.EXPO_PUBLIC_WEB_BASE_URL ?? "https://linguameet-eumlc9ch.manus.space",
     oauthPortalUrl: process.env.EXPO_PUBLIC_OAUTH_PORTAL_URL ?? "",
     appId: process.env.EXPO_PUBLIC_APP_ID ?? "",
   },

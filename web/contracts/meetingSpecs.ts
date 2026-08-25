@@ -55,6 +55,33 @@ export const meetingPrivacyDefaults = {
   requiresUnanimousActiveParticipantConsent: true,
 } as const;
 
+export const lobbyReadinessCopy = {
+  microphone: {
+    title: "جاهزية الميكروفون",
+    untested: "اختبر الميكروفون قبل الدخول",
+    testing: "اختبار الإشارة جارٍ…",
+    ready: "تم اختبار الميكروفون بنجاح",
+    muted: "الميكروفون موقوف مؤقتًا",
+    testAction: "اختبار الميكروفون",
+  },
+  invite: {
+    title: "إرسال رابط دعوة",
+    enabled: "يمكنك نسخ الرابط ومشاركته بعد فتح الجلسة.",
+    disabled: "لن تظهر أدوات نسخ أو مشاركة الرابط داخل هذه الجلسة.",
+  },
+  consent: {
+    title: "أوافق على حفظ النص المترجم ومحضر الاجتماع.",
+    required: "يلزم تأكيد موافقتك قبل حفظ محتوى هذه الجلسة.",
+    detail: "لن يُحفظ المحتوى إلا عند موافقتك وموافقة جميع المشاركين الحاضرين.",
+  },
+} as const;
+
+export type LobbyInviteState = "enabled" | "disabled";
+
+export function getLobbyInviteGuidance(enabled: boolean) {
+  return lobbyReadinessCopy.invite[enabled ? "enabled" : "disabled"];
+}
+
 export const meetingStateLabels: Record<MeetingStatus, string> = {
   lobby: "في الردهة",
   active: "نشطة",

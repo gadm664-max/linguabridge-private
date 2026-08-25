@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultVoiceProfile, defaultVoiceRate, normalizeVoiceProfile, normalizeVoiceRate, supportedLanguages, supportedVoiceProfiles, supportedVoiceRates } from "@linguabridge/contracts/meetingSpecs";
+import { defaultVoiceProfile, defaultVoiceRate, getLobbyInviteGuidance, lobbyReadinessCopy, normalizeVoiceProfile, normalizeVoiceRate, supportedLanguages, supportedVoiceProfiles, supportedVoiceRates } from "@linguabridge/contracts/meetingSpecs";
 
 describe("shared meeting specifications", () => {
   it("publishes the same supported language set used by web and mobile clients", () => {
@@ -18,5 +18,14 @@ describe("shared meeting specifications", () => {
     expect(defaultVoiceProfile).toBe("natural");
     expect(normalizeVoiceProfile("warm")).toBe("warm");
     expect(normalizeVoiceProfile("unknown")).toBe("natural");
+  });
+
+  it("provides the same privacy-safe lobby guidance to every client", () => {
+    expect(lobbyReadinessCopy.microphone.testAction).toBe("اختبار الميكروفون");
+    expect(lobbyReadinessCopy.consent.required).toContain("موافقتك");
+    expect(lobbyReadinessCopy.invite.enabled).toContain("مشاركته");
+    expect(lobbyReadinessCopy.invite.disabled).toContain("أدوات نسخ أو مشاركة");
+    expect(getLobbyInviteGuidance(true)).toBe(lobbyReadinessCopy.invite.enabled);
+    expect(getLobbyInviteGuidance(false)).toBe(lobbyReadinessCopy.invite.disabled);
   });
 });
