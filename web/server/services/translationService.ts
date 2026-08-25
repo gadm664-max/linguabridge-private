@@ -4,20 +4,63 @@ import {
   type TranslationRequest,
 } from "./translationProvider";
 
-export type { TranslationProvider, TranslationRequest } from "./translationProvider";
+export type {
+  TranslationProvider,
+  TranslationRequest,
+} from "./translationProvider";
 
+const MAX_TEXT_LENGTH = 4000;
+const MAX_CONTEXT_LENGTH = 500;
 let defaultProvider: TranslationProvider | undefined;
 
+export class TranslationServiceError extends Error {
+  constructor(
+    public readonly code: string,
+    message: string,
+    public readonly statusCode = 502
+  ) {
+    super(message);
+    this.name = "TranslationServiceError";
+  }
+}
+
 function getDefaultProvider() {
-  return defaultProvider ??= createTranslationProvider();
+  return (defaultProvider ??= createTranslationProvider());
+}
+
+function validateRequest(input: TranslationRequest) {
+  const text = input.text.trim();
+  if (!text)
+    throw new TranslationServiceError(
+      "EMPTY_TEXT",
+      "Translation text is required",
+      400
+    );
+  if (text.length > MAX_TEXT_LENGTH)
+    throw new TranslationServiceError(
+      "TEXT_TOO_LONG",
+      "Translation text is too long",
+      413
+    );
+  if (input.context && input.context.length > MAX_CONTEXT_LENGTH) {
+    throw new TranslationServiceError(
+      "CONTEXT_TOO_LONG",
+      "Translation context is too long",
+      413
+    );
+  }
+  return text;
+}
+
+function isUnsafePlainText(value: string) {
+  return /<\/?script\b|<!doctype\b|```/.test(value);
 }
 
 export async function translateMeetingText(
   input: TranslationRequest,
-  provider: TranslationProvider = getDefaultProvider(),
+  provider: TranslationProvider = getDefaultProvider()
 ) {
-  const text = input.text.trim();
-  if (!text) throw new Error("Translation text is required");
+  const text = validateRequest(input);
   if (input.sourceLanguage === input.targetLanguage) {
     return {
       translation: text,
@@ -26,10 +69,41 @@ export async function translateMeetingText(
     };
   }
 
-  const result = await provider.translate({ ...input, text });
+  let result;
+  try {
+    result = await provider.translate({ ...input, text });
+  } catch (error) {
+    console.error(
+      "[Translation] Provider request failed",
+      error instanceof Error ? error.message : "unknown error"
+    );
+    throw new TranslationServiceError(
+      "PROVIDER_UNAVAILABLE",
+      "Translation provider unavailable",
+      502
+    );
+  }
+
+  if (
+    !result ||
+    typeof result.translatedText !== "string" ||
+    !result.translatedText.trim() ||
+    isUnsafePlainText(result.translatedText)
+  ) {
+    throw new TranslationServiceError(
+      "MALFORMED_PROVIDER_RESPONSE",
+      "Translation provider returned an invalid response",
+      502
+    );
+  }
   return {
     translation: result.translatedText,
     provider: result.provider,
     model: result.model,
   };
 }
+
+export const translationLimits = {
+  maxTextLength: MAX_TEXT_LENGTH,
+  maxContextLength: MAX_CONTEXT_LENGTH,
+} as const;

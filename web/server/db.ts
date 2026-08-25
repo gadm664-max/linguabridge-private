@@ -1,6 +1,7 @@
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { randomUUID } from "node:crypto";
+import { and, asc, desc, eq, gt, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, InsertUserPreference, InsertMeeting, InsertMeetingParticipant, externalWebhookEvents, meetingMinutes, meetings, meetingParticipants, transcriptSegments, userPreferences, users, whatsappOptIns } from "../drizzle/schema";
+import { InsertUser, InsertUserPreference, InsertMeeting, InsertMeetingParticipant, externalWebhookEvents, meetingMinutes, meetings, meetingParticipants, transcriptSegments, translationHistory, userPreferences, users, whatsappOptIns, organizationMembers, organizations, passwordCredentials, refreshTokens, InsertOrganizationMember, InsertPasswordCredential, InsertRefreshToken, InsertTranslationHistory } from "../drizzle/schema";
 import { buildUserDataExport } from "./dataExport";
 import { ENV } from './_core/env';
 
@@ -88,6 +89,129 @@ export async function getUserByOpenId(openId: string) {
   const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
 
   return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getUserByEmail(email: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const result = await db.select().from(users).where(eq(users.email, email)).limit(1);
+  return result[0];
+}
+
+export async function createPasswordUser(input: { email: string; name: string; passwordHash: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  return db.transaction(async tx => {
+    const openId = `local_${randomUUID()}`;
+    const created = await tx.insert(users).values({
+      openId,
+      name: input.name,
+      email: input.email,
+      loginMethod: "password",
+    }).$returningId();
+    const userId = created[0]?.id;
+    if (!userId) throw new Error("User creation failed");
+    const credential: InsertPasswordCredential = { userId, passwordHash: input.passwordHash };
+    await tx.insert(passwordCredentials).values(credential);
+    const result = await tx.select().from(users).where(eq(users.id, userId)).limit(1);
+    return result[0];
+  });
+}
+
+export async function getPasswordCredentialByEmail(email: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const result = await db.select({ user: users, credential: passwordCredentials })
+    .from(users)
+    .innerJoin(passwordCredentials, eq(passwordCredentials.userId, users.id))
+    .where(eq(users.email, email))
+    .limit(1);
+  return result[0];
+}
+
+export async function createRefreshTokenRecord(input: InsertRefreshToken) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db.insert(refreshTokens).values(input);
+}
+
+export async function getActiveRefreshToken(tokenHash: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const result = await db.select({ token: refreshTokens, user: users })
+    .from(refreshTokens)
+    .innerJoin(users, eq(refreshTokens.userId, users.id))
+    .where(and(eq(refreshTokens.tokenHash, tokenHash), isNull(refreshTokens.revokedAt), gt(refreshTokens.expiresAt, new Date())))
+    .limit(1);
+  return result[0];
+}
+
+export async function revokeRefreshToken(tokenHash: string, replacedByTokenHash?: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db.update(refreshTokens).set({ revokedAt: new Date(), replacedByTokenHash: replacedByTokenHash ?? null }).where(eq(refreshTokens.tokenHash, tokenHash));
+}
+
+export async function recordTranslationUsage(input: InsertTranslationHistory) {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(translationHistory).values(input);
+}
+
+function toWorkspaceSlug(value: string, userId: number) {
+  const normalized = value
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 72) || "workspace";
+  return `${normalized}-${userId}`;
+}
+
+export async function getUserOrganizations(userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  return db
+    .select({
+      id: organizations.id,
+      name: organizations.name,
+      slug: organizations.slug,
+      role: organizationMembers.role,
+      createdAt: organizations.createdAt,
+      updatedAt: organizations.updatedAt,
+    })
+    .from(organizationMembers)
+    .innerJoin(organizations, eq(organizationMembers.organizationId, organizations.id))
+    .where(eq(organizationMembers.userId, userId))
+    .orderBy(asc(organizations.createdAt));
+}
+
+export async function ensurePersonalOrganization(user: { id: number; name: string | null; email: string | null }) {
+  const existing = await getUserOrganizations(user.id);
+  if (existing[0]) return existing[0];
+
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const workspaceName = user.name?.trim() || user.email?.split("@")[0]?.trim() || "Personal workspace";
+  const organizationValues = {
+    ownerUserId: user.id,
+    name: `${workspaceName}'s workspace`,
+    slug: toWorkspaceSlug(workspaceName, user.id),
+  };
+  const created = await db.insert(organizations).values(organizationValues).$returningId();
+  const organizationId = created[0]?.id;
+  if (!organizationId) throw new Error("Organization creation failed");
+
+  const membership: InsertOrganizationMember = {
+    organizationId,
+    userId: user.id,
+    role: "owner",
+  };
+  await db.insert(organizationMembers).values(membership);
+  const result = await getUserOrganizations(user.id);
+  if (!result[0]) throw new Error("Organization membership creation failed");
+  return result[0];
 }
 
 export async function createMeeting(input: {
