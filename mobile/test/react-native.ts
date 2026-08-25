@@ -6,4 +6,5 @@ export const Pressable = (props: Record<string, unknown>) => React.createElement
 export const ScrollView = (props: Record<string, unknown>) => React.createElement("ScrollView", props, props.children as React.ReactNode);
 export const Switch = (props: Record<string, unknown>) => React.createElement("Switch", props, props.children as React.ReactNode);
 export const TextInput = (props: Record<string, unknown>) => React.createElement("TextInput", props, props.children as React.ReactNode);
+export const FlatList = (props: Record<string, unknown>) => React.createElement("FlatList", props, props.children as React.ReactNode);
 export const StyleSheet = { create: <T,>(styles: T) => styles };
