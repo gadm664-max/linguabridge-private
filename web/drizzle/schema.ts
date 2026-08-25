@@ -25,6 +25,33 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
+export const organizations = mysqlTable("organizations", {
+  id: int("id").autoincrement().primaryKey(),
+  ownerUserId: int("ownerUserId").notNull().references(() => users.id),
+  name: varchar("name", { length: 160 }).notNull(),
+  slug: varchar("slug", { length: 96 }).notNull().unique(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [
+  index("organizations_owner_idx").on(table.ownerUserId),
+]);
+
+export const organizationMembers = mysqlTable("organizationMembers", {
+  id: int("id").autoincrement().primaryKey(),
+  organizationId: int("organizationId").notNull().references(() => organizations.id),
+  userId: int("userId").notNull().references(() => users.id),
+  role: mysqlEnum("role", ["owner", "admin", "member"]).default("member").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [
+  unique("organization_member_unique").on(table.organizationId, table.userId),
+  index("organization_members_user_idx").on(table.userId),
+]);
+
+export type Organization = typeof organizations.$inferSelect;
+export type InsertOrganization = typeof organizations.$inferInsert;
+export type OrganizationMember = typeof organizationMembers.$inferSelect;
+export type InsertOrganizationMember = typeof organizationMembers.$inferInsert;
+
 export const meetings = mysqlTable("meetings", {
   id: int("id").autoincrement().primaryKey(),
   hostUserId: int("hostUserId").notNull().references(() => users.id),
@@ -135,3 +162,4 @@ export type MeetingMinute = typeof meetingMinutes.$inferSelect;
 export type UserPreference = typeof userPreferences.$inferSelect;
 export type InsertUserPreference = typeof userPreferences.$inferInsert;
 export type WhatsappOptIn = typeof whatsappOptIns.$inferSelect;
+export type InsertWhatsappOptIn = typeof whatsappOptIns.$inferInsert;

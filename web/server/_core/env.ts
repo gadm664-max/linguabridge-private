@@ -7,6 +7,7 @@ export const ENV = {
   isProduction: process.env.NODE_ENV === "production",
   forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
+  translationProvider: process.env.TRANSLATION_PROVIDER ?? "manus-llm",
   livekitUrl: process.env.LIVEKIT_URL ?? "",
   livekitApiKey: process.env.LIVEKIT_API_KEY ?? "",
   livekitApiSecret: process.env.LIVEKIT_API_SECRET ?? "",

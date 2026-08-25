@@ -1,7 +1,8 @@
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, router } from "./_core/trpc";
+import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
+import * as db from "./db";
 import { meetingsRouter } from "./routers/meetings";
 import { minutesRouter } from "./routers/minutes";
 import { mobileRouter } from "./routers/mobile";
@@ -13,6 +14,11 @@ export const appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
+    bootstrap: protectedProcedure.query(async ({ ctx }) => {
+      const workspace = await db.ensurePersonalOrganization(ctx.user);
+      const organizations = await db.getUserOrganizations(ctx.user.id);
+      return { user: ctx.user, workspace, organizations };
+    }),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });

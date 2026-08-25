@@ -78,6 +78,10 @@ export const lobbyReadinessCopy = {
 
 export type LobbyInviteState = "enabled" | "disabled";
 
+export function getInviteSharingSessionParam(enabled: boolean) {
+  return enabled ? "1" : "0";
+}
+
 export function getLobbyInviteGuidance(enabled: boolean) {
   return lobbyReadinessCopy.invite[enabled ? "enabled" : "disabled"];
 }

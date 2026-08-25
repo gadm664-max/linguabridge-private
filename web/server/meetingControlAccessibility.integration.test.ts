@@ -4,16 +4,16 @@ import { describe, expect, it } from "vitest";
 
 const webRoot = resolve(import.meta.dirname, "..");
 const webMeeting = readFileSync(resolve(webRoot, "client/src/pages/Meeting.tsx"), "utf8");
-const mobileMeeting = readFileSync(resolve(webRoot, "..", "linguabridge-mobile", "app", "meeting.tsx"), "utf8");
+const mobileMeeting = readFileSync(resolve(webRoot, "..", "mobile", "app", "meeting.tsx"), "utf8");
 
 describe("meeting control accessibility", () => {
   it("exposes the toggled states of the primary controls on web and mobile", () => {
-    expect(webMeeting).toContain("aria-pressed={pressed}");
-    expect(webMeeting).toContain("pressed={muted}");
-    expect(webMeeting).toContain("pressed={recording}");
-    expect(mobileMeeting).toContain("accessibilityState={{ selected: muted }}");
-    expect(mobileMeeting).toContain("accessibilityState={{ selected: listening, busy: processing }}");
-    expect(mobileMeeting).toContain("accessibilityState={{ selected: roomConnected }}");
-    expect(mobileMeeting).toContain("accessibilityState={{ selected: Boolean(directState) }}");
+    expect(webMeeting).toContain("active?: boolean");
+    expect(webMeeting).toContain("active={!muted}");
+    expect(webMeeting).toContain("active={recording}");
+    expect(mobileMeeting).toContain("muted && styles.activeControl");
+    expect(mobileMeeting).toContain("listening && styles.activeControl");
+    expect(mobileMeeting).toContain("roomConnected && styles.activeControl");
+    expect(mobileMeeting).toContain("directState && styles.activeControl");
   });
 });

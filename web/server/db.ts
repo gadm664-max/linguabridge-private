@@ -1,6 +1,6 @@
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, InsertUserPreference, InsertMeeting, InsertMeetingParticipant, externalWebhookEvents, meetingMinutes, meetings, meetingParticipants, transcriptSegments, userPreferences, users, whatsappOptIns } from "../drizzle/schema";
+import { InsertUser, InsertUserPreference, InsertMeeting, InsertMeetingParticipant, externalWebhookEvents, meetingMinutes, meetings, meetingParticipants, transcriptSegments, userPreferences, users, whatsappOptIns, organizationMembers, organizations, InsertOrganizationMember } from "../drizzle/schema";
 import { buildUserDataExport } from "./dataExport";
 import { ENV } from './_core/env';
 
@@ -88,6 +88,62 @@ export async function getUserByOpenId(openId: string) {
   const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
 
   return result.length > 0 ? result[0] : undefined;
+}
+
+function toWorkspaceSlug(value: string, userId: number) {
+  const normalized = value
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 72) || "workspace";
+  return `${normalized}-${userId}`;
+}
+
+export async function getUserOrganizations(userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  return db
+    .select({
+      id: organizations.id,
+      name: organizations.name,
+      slug: organizations.slug,
+      role: organizationMembers.role,
+      createdAt: organizations.createdAt,
+      updatedAt: organizations.updatedAt,
+    })
+    .from(organizationMembers)
+    .innerJoin(organizations, eq(organizationMembers.organizationId, organizations.id))
+    .where(eq(organizationMembers.userId, userId))
+    .orderBy(asc(organizations.createdAt));
+}
+
+export async function ensurePersonalOrganization(user: { id: number; name: string | null; email: string | null }) {
+  const existing = await getUserOrganizations(user.id);
+  if (existing[0]) return existing[0];
+
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const workspaceName = user.name?.trim() || user.email?.split("@")[0]?.trim() || "Personal workspace";
+  const organizationValues = {
+    ownerUserId: user.id,
+    name: `${workspaceName}'s workspace`,
+    slug: toWorkspaceSlug(workspaceName, user.id),
+  };
+  const created = await db.insert(organizations).values(organizationValues).$returningId();
+  const organizationId = created[0]?.id;
+  if (!organizationId) throw new Error("Organization creation failed");
+
+  const membership: InsertOrganizationMember = {
+    organizationId,
+    userId: user.id,
+    role: "owner",
+  };
+  await db.insert(organizationMembers).values(membership);
+  const result = await getUserOrganizations(user.id);
+  if (!result[0]) throw new Error("Organization membership creation failed");
+  return result[0];
 }
 
 export async function createMeeting(input: {
