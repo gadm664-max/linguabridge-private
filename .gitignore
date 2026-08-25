@@ -1,0 +1,18 @@
+# Secrets and local runtime configuration
+.env
+.env.*
+!.env.example
+
+# Dependencies and generated outputs
+node_modules/
+dist/
+build/
+coverage/
+.expo/
+android/
+ios/
+.manus-logs/
+
+# Release artifacts are delivered separately and should not be committed by default
+release/*.apk
+release/*.zip
