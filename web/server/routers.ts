@@ -9,6 +9,7 @@ import { minutesRouter } from "./routers/minutes";
 import { mobileRouter } from "./routers/mobile";
 import { translationRouter } from "./routers/translation";
 import { whatsappRouter } from "./routers/whatsapp";
+import { voiceRouter } from "./routers/voice";
 import { AUTH_CONSTANTS, hashRefreshToken } from "./services/localAuth";
 
 export const appRouter = router({
@@ -50,6 +51,7 @@ export const appRouter = router({
   minutes: minutesRouter,
   translation: translationRouter,
   whatsapp: whatsappRouter,
+  voice: voiceRouter,
 });
 
 export type AppRouter = typeof appRouter;

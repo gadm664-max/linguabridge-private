@@ -35,6 +35,8 @@ Browser
 
 تستخدم كلمات المرور scrypt مع salt عشوائي، وتخزن refresh tokens بصمات SHA-256 فقط مع rotation وrevocation. تستخدم مسارات cookie-backed REST same-origin guard مع `APP_ORIGIN` اختياري، ولا تفتح CORS عامًا. يستخدم rate limiter ذاكرةً مؤقتةً حاليًا؛ يجب استبداله بـ Redis قبل تشغيل أكثر من instance. يستخدم LLM gateway timeout قدره 20 ثانية وإعادة محاولة محدودة لـ429/5xx/network، مع أخطاء منظمة لا تعيد response body أو الأسرار. تظل migration المتوافقة مع MySQL/TiDB ومفاتيح الجداول العددية قرار توافق مع Phase 1، بينما يتطلب الانتقال إلى PostgreSQL/UUID مرحلة ترحيل مستقلة.
 
-## ما بعد Phase 2
+## Phase 3A — الصوت القصير والنص المترجم
 
-لا تشمل هذه المرحلة live microphone streaming أو STT أو TTS أو WebRTC أو mobile أو WhatsApp أو meeting intelligence. يجب تصميم هذه المكونات لاحقًا لتستهلك provider contracts الحالية دون نقل مفاتيح المزود إلى العملاء.
+تضيف Phase 3A مسارًا محدودًا من `MediaRecorder` في المتصفح إلى `voice.transcribeAndTranslate` عبر tRPC، مع chunks افتراضية مدتها 4 ثوانٍ. يتحقق الخادم من الجلسة، والعضوية الفعالة، وموافقة جميع المشاركين قبل معالجة الصوت. يمر STT عبر `SpeechToTextProvider` القابل للاستبدال، بينما تمر الترجمة عبر `TranslationService` و`TranslationProvider`. لا يُخزن الصوت الخام؛ ويُحفظ النص النهائي فقط عبر مسار الاجتماع القائم عندما تسمح سياسة الموافقة.
+
+التفاصيل التشغيلية والعقود والقيود موثقة في [`PHASE_3A.md`](./PHASE_3A.md). لا تشمل هذه المرحلة WebRTC أو الصوت متعدد المشاركين أو WhatsApp أو meeting intelligence أو أي تشغيل خلفي.
