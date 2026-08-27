@@ -49,7 +49,7 @@ flowchart LR
 
 ## طبقة المزود
 
-يعتمد router على `SpeechToTextProvider` في `server/services/speechToTextService.ts` بدل استدعاء vendor مباشرة. التنفيذ الافتراضي هو `ManusWhisperSpeechToTextProvider` الذي يمرر الطلب إلى `transcribeAudioBuffer` في `server/_core/voiceTranscription.ts` باستخدام endpoint الخادمي `v1/audio/transcriptions` ونموذج `whisper-1`. يمكن استبدال implementation لاحقًا دون تعديل عقد router أو واجهة Meeting.
+يعتمد router على `SpeechToTextService` في `server/services/speechToTextService.ts` بدل استدعاء vendor مباشرة. يحتوي هذا الحد على `SpeechToTextProvider` و`SpeechToTextProviderRegistry` و`FallbackSpeechToTextProvider`، وهي تمثل STT A/B/C في التصميم. يقرأ الترتيب من `STT_PROVIDER`، ولا يسمح إلا بالمزودين المسجلين. التنفيذ الإنتاجي المسجل حاليًا هو `ManusWhisperSpeechToTextProvider` الذي يمرر الطلب إلى `transcribeAudioBuffer` في `server/_core/voiceTranscription.ts` باستخدام endpoint الخادمي `v1/audio/transcriptions` ونموذج `whisper-1`. يمكن إضافة مزود جديد إلى registry أو استبدال implementation لاحقًا دون تعديل عقد router أو واجهة Meeting.
 
 الترجمة تمر فقط عبر `TranslationService` و`TranslationProvider` الحاليين؛ لا يستدعي مسار الصوت LLM vendor مباشرة من العميل.
 

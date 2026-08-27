@@ -13,7 +13,11 @@ Browser
         ├── authRoutes + translationRoutes
         ├── services/localAuth
         ├── services/translationService
-        │     └── TranslationProvider → ManusLlmTranslationProvider
+        │     └── TranslationProviderRegistry → Provider A / Provider B / Provider C
+        │           └── ManusLlmTranslationProvider (registered production provider)
+        ├── services/speechToTextService
+        │     └── SpeechToTextProviderRegistry → STT A / STT B / STT C
+        │           └── ManusWhisperSpeechToTextProvider (registered production provider)
         └── Drizzle repositories → MySQL/TiDB schema
 ```
 
@@ -29,7 +33,7 @@ Browser
 
 ## الترجمة
 
-يفصل `TranslationService` عقد التطبيق عن المزود. يطبق endpoint حدود اللغة والطول والسياق، ويعيد request ID وlatency. يعالج الخدمة فشل المزود واستجابته المشوهة كأخطاء تطبيقية دون إعادة stack trace أو أسرار.
+يفصل `TranslationService` عقد التطبيق عن المزود عبر `TranslationProviderRegistry`. يقرأ `TRANSLATION_PROVIDER` ترتيبًا مفصولًا بفواصل، ويبني fallback chain من المزودين المسجلين؛ عند نجاح أحدهم تُعاد metadata الخاصة بالمزود الذي خدم الطلب، وعند فشل الجميع يُعاد آخر خطأ structured دون stack trace أو أسرار. المزود المتاح والمسجل حاليًا هو `ManusLlmTranslationProvider` باسم `manus-llm`، بينما Provider B/C نقاط توسعة لا تُفعل قبل تسجيل implementation وcredentials مستقلة.
 
 ## الأمن والتوسع
 
@@ -37,6 +41,6 @@ Browser
 
 ## Phase 3A — الصوت القصير والنص المترجم
 
-تضيف Phase 3A مسارًا محدودًا من `MediaRecorder` في المتصفح إلى `voice.transcribeAndTranslate` عبر tRPC، مع chunks افتراضية مدتها 4 ثوانٍ. يتحقق الخادم من الجلسة، والعضوية الفعالة، وموافقة جميع المشاركين قبل معالجة الصوت. يمر STT عبر `SpeechToTextProvider` القابل للاستبدال، بينما تمر الترجمة عبر `TranslationService` و`TranslationProvider`. لا يُخزن الصوت الخام؛ ويُحفظ النص النهائي فقط عبر مسار الاجتماع القائم عندما تسمح سياسة الموافقة.
+تضيف Phase 3A مسارًا محدودًا من `MediaRecorder` في المتصفح إلى `voice.transcribeAndTranslate` عبر tRPC، مع chunks افتراضية مدتها 4 ثوانٍ. يتحقق الخادم من الجلسة، والعضوية الفعالة، وموافقة جميع المشاركين قبل معالجة الصوت. يمر STT عبر `SpeechToTextProviderRegistry` و`FallbackSpeechToTextProvider`، بينما تمر الترجمة عبر `TranslationService` و`TranslationProviderRegistry`. لا يُخزن الصوت الخام؛ ويُحفظ النص النهائي فقط عبر مسار الاجتماع القائم عندما تسمح سياسة الموافقة. المزود المسجل فعليًا حاليًا هو `ManusWhisperSpeechToTextProvider` باسم `manus-whisper`، مع `STT_PROVIDER` لترتيب المزودين المسجلين.
 
 التفاصيل التشغيلية والعقود والقيود موثقة في [`PHASE_3A.md`](./PHASE_3A.md). لا تشمل هذه المرحلة WebRTC أو الصوت متعدد المشاركين أو WhatsApp أو meeting intelligence أو أي تشغيل خلفي.

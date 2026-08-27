@@ -1,8 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { invokeLLM, listLLMModels, LlmGatewayError } from "../_core/llm";
 import {
+  FallbackTranslationProvider,
   ManusLlmTranslationProvider,
+  TranslationProviderConfigurationError,
   TranslationProviderError,
+  TranslationProviderRegistry,
+  parseTranslationProviderOrder,
 } from "./translationProvider";
 
 vi.mock("../_core/llm", () => ({
@@ -120,5 +124,98 @@ describe("ManusLlmTranslationProvider", () => {
         targetLanguage: "ar",
       })
     ).rejects.toMatchObject({ code: "MALFORMED_RESPONSE", statusCode: 502 });
+  });
+});
+
+describe("TranslationProviderRegistry and fallback chain", () => {
+  const request = {
+    text: "Hello",
+    sourceLanguage: "en",
+    targetLanguage: "ar",
+  };
+
+  it("normalizes provider names and preserves configured order without duplicates", () => {
+    const registry = new TranslationProviderRegistry();
+    const providerA = { name: "provider-a", translate: vi.fn() };
+    const providerB = { name: "provider-b", translate: vi.fn() };
+    registry
+      .register("Provider-A", () => providerA)
+      .register("provider-b", () => providerB);
+
+    expect(
+      registry.resolveMany(
+        parseTranslationProviderOrder("Provider-A, provider-b, provider-a")
+      )
+    ).toEqual([providerA, providerB]);
+  });
+
+  it("falls back from Provider A to Provider B and returns successful provider metadata", async () => {
+    const providerA = {
+      name: "provider-a",
+      translate: vi
+        .fn()
+        .mockRejectedValue(
+          new TranslationProviderError("NETWORK_FAILURE", "safe failure", 503)
+        ),
+    };
+    const providerB = {
+      name: "provider-b",
+      translate: vi.fn().mockResolvedValue({
+        translatedText: "مرحبا",
+        provider: "provider-b",
+        model: "b-model",
+      }),
+    };
+
+    const result = await new FallbackTranslationProvider([
+      providerA,
+      providerB,
+    ]).translate(request);
+    expect(result).toEqual({
+      translatedText: "مرحبا",
+      provider: "provider-b",
+      model: "b-model",
+    });
+    expect(providerA.translate).toHaveBeenCalledWith(request);
+    expect(providerB.translate).toHaveBeenCalledWith(request);
+  });
+
+  it("returns the final structured provider error when all providers fail", async () => {
+    const providerA = {
+      name: "provider-a",
+      translate: vi
+        .fn()
+        .mockRejectedValue(
+          new TranslationProviderError("TIMEOUT", "timeout", 504)
+        ),
+    };
+    const providerB = {
+      name: "provider-b",
+      translate: vi
+        .fn()
+        .mockRejectedValue(
+          new TranslationProviderError(
+            "RATE_LIMITED",
+            "rate limited",
+            429,
+            2000
+          )
+        ),
+    };
+
+    await expect(
+      new FallbackTranslationProvider([providerA, providerB]).translate(request)
+    ).rejects.toMatchObject({
+      code: "RATE_LIMITED",
+      statusCode: 429,
+      retryAfterMs: 2000,
+    });
+  });
+
+  it("fails closed for an unregistered configured provider", () => {
+    const registry = new TranslationProviderRegistry();
+    expect(() => registry.resolve("provider-c")).toThrow(
+      TranslationProviderConfigurationError
+    );
   });
 });

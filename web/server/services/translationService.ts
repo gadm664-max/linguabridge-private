@@ -27,7 +27,16 @@ export class TranslationServiceError extends Error {
 }
 
 function getDefaultProvider() {
-  return (defaultProvider ??= createTranslationProvider());
+  try {
+    return (defaultProvider ??= createTranslationProvider());
+  } catch (error) {
+    if (error instanceof TranslationServiceError) throw error;
+    throw new TranslationServiceError(
+      "PROVIDER_CONFIGURATION",
+      "Translation provider configuration is invalid",
+      500
+    );
+  }
 }
 
 function validateRequest(input: TranslationRequest) {
@@ -60,9 +69,10 @@ function isUnsafePlainText(value: string) {
 
 export async function translateMeetingText(
   input: TranslationRequest,
-  provider: TranslationProvider = getDefaultProvider()
+  provider?: TranslationProvider
 ) {
   const text = validateRequest(input);
+  const selectedProvider = provider ?? getDefaultProvider();
   if (input.sourceLanguage === input.targetLanguage) {
     return {
       translation: text,
@@ -73,7 +83,7 @@ export async function translateMeetingText(
 
   let result;
   try {
-    result = await provider.translate({ ...input, text });
+    result = await selectedProvider.translate({ ...input, text });
   } catch (error) {
     if (error instanceof TranslationProviderError) {
       throw new TranslationServiceError(

@@ -33,10 +33,19 @@ export class TranslationProviderError extends Error {
   }
 }
 
+export class TranslationProviderConfigurationError extends Error {
+  constructor(providerName: string) {
+    super(`Translation provider is not configured: ${providerName}`);
+    this.name = "TranslationProviderConfigurationError";
+  }
+}
+
 export interface TranslationProvider {
   readonly name: string;
   translate(request: TranslationRequest): Promise<TranslationResult>;
 }
+
+export type TranslationProviderFactory = () => TranslationProvider;
 
 const modelCandidates = [
   "gpt-5-mini",
@@ -117,12 +126,92 @@ export class ManusLlmTranslationProvider implements TranslationProvider {
   }
 }
 
-export function createTranslationProvider(): TranslationProvider {
-  const provider = ENV.translationProvider.trim().toLowerCase();
-  if (!provider || provider === "llm" || provider === "manus-llm") {
-    return new ManusLlmTranslationProvider();
+/** Registry for replaceable providers (Provider A/B/C in the architecture). */
+export class TranslationProviderRegistry {
+  private readonly factories = new Map<string, TranslationProviderFactory>();
+
+  register(name: string, factory: TranslationProviderFactory) {
+    const normalizedName = name.trim().toLowerCase();
+    if (!normalizedName) throw new TranslationProviderConfigurationError(name);
+    this.factories.set(normalizedName, factory);
+    return this;
   }
-  throw new Error(
-    `Unsupported translation provider: ${ENV.translationProvider}`
+
+  resolve(name: string) {
+    const normalizedName = name.trim().toLowerCase();
+    const factory = this.factories.get(normalizedName);
+    if (!factory)
+      throw new TranslationProviderConfigurationError(normalizedName);
+    return factory();
+  }
+
+  resolveMany(names: string[]) {
+    return names.map(name => this.resolve(name));
+  }
+}
+
+/**
+ * Executes providers in configured order. A later provider is attempted only
+ * after a provider-layer failure; successful metadata identifies the provider
+ * that actually served the request.
+ */
+export class FallbackTranslationProvider implements TranslationProvider {
+  readonly name: string;
+
+  constructor(private readonly providers: TranslationProvider[]) {
+    if (!providers.length)
+      throw new TranslationProviderConfigurationError("empty");
+    this.name = `fallback(${providers.map(provider => provider.name).join(",")})`;
+  }
+
+  async translate(request: TranslationRequest) {
+    let lastError: TranslationProviderError | undefined;
+    for (const provider of this.providers) {
+      try {
+        return await provider.translate(request);
+      } catch (error) {
+        lastError =
+          error instanceof TranslationProviderError
+            ? error
+            : new TranslationProviderError(
+                "NETWORK_FAILURE",
+                "Translation provider unavailable",
+                503
+              );
+      }
+    }
+    throw (
+      lastError ??
+      new TranslationProviderError(
+        "NETWORK_FAILURE",
+        "Translation provider unavailable",
+        503
+      )
+    );
+  }
+}
+
+export function parseTranslationProviderOrder(value: string) {
+  const names = value
+    .split(",")
+    .map(name => name.trim().toLowerCase())
+    .filter(Boolean);
+  return Array.from(new Set(names.length ? names : ["manus-llm"]));
+}
+
+export function createTranslationProviderRegistry() {
+  return new TranslationProviderRegistry().register(
+    "manus-llm",
+    () => new ManusLlmTranslationProvider()
   );
+}
+
+export function createTranslationProvider(): TranslationProvider {
+  const registry = createTranslationProviderRegistry();
+  const providers = registry.resolveMany(
+    parseTranslationProviderOrder(ENV.translationProvider)
+  );
+  return providers.length === 1
+    ? providers[0]
+    : new FallbackTranslationProvider(providers);
 }
