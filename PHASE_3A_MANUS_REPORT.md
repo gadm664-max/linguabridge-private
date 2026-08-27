@@ -3,7 +3,7 @@
 **Author:** Manus AI
 **Repository:** [gadm664-max/linguabridge-private](https://github.com/gadm664-max/linguabridge-private)
 **Baseline HEAD before Phase 3A:** `ca96a00` — `docs: add phase 2.1 audit report`
-**Current report state:** implementation committed and pushed إلى `main` بنجاح، مع Smoke Test جاهز للتشغيل عند توفر credentials حقيقية.
+**Current report state:** Phase 3A.1 implementation committed and pushed إلى `main`، مع تقرير النتائج النهائي قيد التحديث.
 
 ## 1. Executive conclusion
 
@@ -105,11 +105,31 @@
 
 الـpartial transcript ليس partial result من Whisper؛ هو preview محلي اختياري من Web Speech API، بينما final transcript مصدره STT الخادمي فقط. بعض المتصفحات لا توفر `SpeechRecognition` أو لا تدعم صيغة MIME نفسها، وفي هذه الحالة يستمر server STT عند توفر `MediaRecorder` لكن قد لا يظهر partial preview. المسار يرسل chunks قصيرة متتابعة عبر tRPC وليس WebRTC، ولا يعالج صوت مشاركين آخرين.
 
-## 10. GitHub and release status
+## 10. Phase 3A.1 real provider smoke test
+
+طُبّقت تعليمات Phase 3A.1 دون إعادة تصميم Phase 3A ودون بدء Phase 3B. أضيف `pnpm stt:smoke` ليستخدم المزود المهيأ فعليًا فقط، وليس `DeterministicSpeechToTextProvider`. يدعم السكربت fixture مستقلًا لكل لغة عبر `STT_SMOKE_AUDIO_AR` و`STT_SMOKE_AUDIO_ES` و`STT_SMOKE_AUDIO_EN`، أو `STT_SMOKE_AUDIO_FILE` كمسار مشترك صريح، مع `STT_SMOKE_MIME_TYPE` الاختياري.
+
+في بيئة التنفيذ الحالية كانت النتيجة الفعلية:
+
+> `REAL PROVIDER TEST = NOT RUN — CREDENTIALS NOT CONFIGURED`
+
+لم تُنشأ أو تُلتزم أي audio fixtures لأن لا توجد recordings غير حساسة مناسبة ولأن credentials غير متاحة. لم تُخترع نتائج عربية أو إسبانية أو إنجليزية، ولم تُحسب latency أو transcript حقيقي. لذلك لم يُنفذ controlled Arabic → Spanish end-to-end chain، إذ يشترط نجاح STT الحقيقي أولًا.
+
+| Phase 3A.1 requirement                    | Actual status                                                                                               |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Real STT provider call                    | **NOT RUN — CREDENTIALS NOT CONFIGURED**                                                                    |
+| Arabic / Spanish / English live results   | Not available; no real request executed                                                                     |
+| First partial latency                     | `null`؛ المزود الحالي chunk-based وليس streaming events                                                     |
+| Final latency / model / detected language | Not available until real provider run                                                                       |
+| Arabic → Spanish chain                    | Skipped because real STT did not succeed                                                                    |
+| Database verification                     | `DATABASE VERIFICATION = NOT RUN — DATABASE_URL NOT CONFIGURED`                                             |
+| Security                                  | Credentials remain server-side; no values printed, committed, or exposed to browser; no raw audio committed |
+
+## 11. GitHub and release status
 
 **GitHub repository:** [https://github.com/gadm664-max/linguabridge-private](https://github.com/gadm664-max/linguabridge-private)
 
-تم تشغيل التحقق النهائي بنجاح قبل الالتزام. commit التنفيذ الخاص بالـprovider registries هو `8a9130fb20f31827ebb0a834c3e4d3d15dc1d74f`، وcommit deterministic STT وLive Smoke Test هو `95ea3502c976bd51d8c8115992eb18d4059026d0`، وكلاهما منشوران على فرع `main`.
+تم تشغيل التحقق النهائي بنجاح قبل الالتزام. commit التنفيذ الخاص بالـprovider registries هو `8a9130fb20f31827ebb0a834c3e4d3d15dc1d74f`، وcommit deterministic STT وLive Smoke Test هو `95ea3502c976bd51d8c8115992eb18d4059026d0`، وcommit توسيع Phase 3A.1 Smoke Test هو `9fd2e6f7c0946c6e5b6d7387ae3555479a412e97`، وكلها منشورة على فرع `main`.
 
 ## References
 
