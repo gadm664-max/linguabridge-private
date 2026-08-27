@@ -106,7 +106,7 @@
 
 **GitHub repository:** [https://github.com/gadm664-max/linguabridge-private](https://github.com/gadm664-max/linguabridge-private)
 
-تم تشغيل التحقق النهائي بنجاح قبل الالتزام. commit المنشور هو `0663ff5a3eaa6b249e53361787f13a563f05f6a5` (`feat: implement phase 3A microphone transcription pipeline`) على فرع `main`.
+تم تشغيل التحقق النهائي بنجاح قبل الالتزام. commit المنشور هو `4afeb109f1ed7761d15bddaf14c4fe7bf2ad1783` (`feat: implement phase 3A microphone transcription pipeline`) على فرع `main`.
 
 ## References
 
