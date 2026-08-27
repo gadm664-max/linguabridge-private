@@ -3,9 +3,9 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { appendTranscriptSegment, getMeetingForInvite, isActiveMeetingParticipant, isMeetingPersistenceAllowed } from "../db";
 import { ENV } from "../_core/env";
-import { transcribeAudio } from "../_core/voiceTranscription";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
-import { storageGetSignedUrl, storagePut } from "../storage";
+import { storagePut } from "../storage";
+import { transcribeWithDeepgram } from "../services/deepgramTranscription";
 import { translateMeetingText } from "../services/translationService";
 
 const languageCode = z.string().trim().min(2).max(16);
@@ -58,7 +58,7 @@ function realtimeConfig() {
   };
 }
 
-export async function requireActiveParticipant(inviteCode: string, userId: number) {
+async function requireActiveParticipant(inviteCode: string, userId: number) {
   const meeting = await getMeetingForInvite(inviteCode);
   if (!meeting) throw new TRPCError({ code: "NOT_FOUND", message: "Invitation not found" });
   if (!(await isActiveMeetingParticipant(meeting.id, userId))) {
@@ -72,7 +72,7 @@ export const mobileRouter = router({
     const realtime = realtimeConfig();
     return {
       apiVersion: 1,
-      transcriptionEnabled: Boolean(ENV.forgeApiUrl && ENV.forgeApiKey),
+      transcriptionEnabled: Boolean(process.env.DEEPGRAM_API_KEY),
       managedRealtimeEnabled: realtime.configured,
       directPeerPreviewEnabled: false,
     };
@@ -95,13 +95,12 @@ export const mobileRouter = router({
 
     const audio = decodeBase64Audio(input.audioBase64);
     const extension = mimeExtensions[input.mimeType];
-    const uploaded = await storagePut(
+    await storagePut(
       `meeting-audio/${meeting.id}/${ctx.user.id}/${crypto.randomUUID()}.${extension}`,
       audio,
       input.mimeType,
     );
-    const audioUrl = await storageGetSignedUrl(uploaded.key);
-    const transcription = await transcribeAudio({ audioUrl, language: input.sourceLanguage });
+    const transcription = await transcribeWithDeepgram({ audio, mimeType: input.mimeType, language: input.sourceLanguage });
     if ("error" in transcription) {
       throw new TRPCError({ code: "BAD_GATEWAY", message: transcription.error });
     }
