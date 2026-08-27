@@ -3,7 +3,7 @@
 **Author:** Manus AI
 **Repository:** [gadm664-max/linguabridge-private](https://github.com/gadm664-max/linguabridge-private)
 **Baseline HEAD before Phase 3A:** `ca96a00` — `docs: add phase 2.1 audit report`
-**Current report state:** Phase 3A.1 implementation committed and pushed إلى `main`، مع تقرير النتائج النهائي قيد التحديث.
+**Current report state:** Phase 3A.1 implementation committed and pushed إلى `main`، مع بنية STT canonical مطبقة ومتحقق منها.
 
 ## 1. Executive conclusion
 
@@ -17,11 +17,11 @@
 
 ## 2. Provider choices
 
-| Capability              | Selected implementation                                                                                           | Credential location                                            |
-| ----------------------- | ----------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| Speech-to-text          | `ManusWhisperSpeechToTextProvider` خلف `SpeechToTextProvider`، باستخدام `whisper-1` عبر `v1/audio/transcriptions` | Server-side `BUILT_IN_FORGE_API_URL` و`BUILT_IN_FORGE_API_KEY` |
-| Translation             | Existing vendor-neutral `TranslationService` → `TranslationProvider` → `ManusLlmTranslationProvider`              | Server-side built-in gateway credentials                       |
-| Browser partial preview | Native `SpeechRecognition` / `webkitSpeechRecognition` when available; preview only وليس مصدر final               | Browser permission فقط، ولا يحتاج API key                      |
+| Capability              | Selected implementation                                                                                                | Credential location                                            |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| Speech-to-text          | `ManusWhisperSpeechProvider` خلف `SpeechProvider` و`SpeechService`، باستخدام `whisper-1` عبر `v1/audio/transcriptions` | Server-side `BUILT_IN_FORGE_API_URL` و`BUILT_IN_FORGE_API_KEY` |
+| Translation             | Existing vendor-neutral `TranslationService` → `TranslationProvider` → `ManusLlmTranslationProvider`                   | Server-side built-in gateway credentials                       |
+| Browser partial preview | Native `SpeechRecognition` / `webkitSpeechRecognition` when available; preview only وليس مصدر final                    | Browser permission فقط، ولا يحتاج API key                      |
 
 لا توجد مفاتيح أو passwords أو session secrets أو raw audio في Git أو client bundle أو logs.
 
@@ -48,7 +48,7 @@
 | File                                                        | Implemented responsibility                                                                                         |
 | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
 | `web/server/routers/voice.ts`                               | tRPC contract، invite authorization، consent gate، STT→translation chaining، safe errors، Retry-After              |
-| `web/server/services/speechToTextService.ts`                | `SpeechToTextProvider` interface وregistry وfallback chain وManus Whisper adapter وerror mapping                   |
+| `web/server/services/speechToTextService.ts`                | `SpeechProvider` interface و`SpeechService` وregistry وfallback chain وManus Whisper adapter وerror mapping        |
 | `web/server/testUtils/deterministicSpeechToTextProvider.ts` | test-only deterministic provider بلا network أو credentials                                                        |
 | `web/scripts/stt-live-smoke.ts`                             | live STT smoke test للغات ar/es/en عند توفر credentials وaudio fixture                                             |
 | `web/server/_core/voiceTranscription.ts`                    | multipart STT request، 20-second timeout، 16MB guard، 401/403/429 mapping، malformed response handling             |
@@ -129,7 +129,7 @@
 
 **GitHub repository:** [https://github.com/gadm664-max/linguabridge-private](https://github.com/gadm664-max/linguabridge-private)
 
-تم تشغيل التحقق النهائي بنجاح قبل الالتزام. commit التنفيذ الخاص بالـprovider registries هو `8a9130fb20f31827ebb0a834c3e4d3d15dc1d74f`، وcommit deterministic STT وLive Smoke Test هو `95ea3502c976bd51d8c8115992eb18d4059026d0`، وcommit توسيع Phase 3A.1 Smoke Test هو `9fd2e6f7c0946c6e5b6d7387ae3555479a412e97`، وكلها منشورة على فرع `main`.
+تم تشغيل التحقق النهائي بنجاح قبل الالتزام. commit التنفيذ الخاص بالـprovider registries هو `8a9130fb20f31827ebb0a834c3e4d3d15dc1d74f`، وcommit deterministic STT وLive Smoke Test هو `95ea3502c976bd51d8c8115992eb18d4059026d0`، وcommit توسيع Phase 3A.1 Smoke Test هو `9fd2e6f7c0946c6e5b6d7387ae3555479a412e97`، وcommit تطبيق بنية `SpeechService → SpeechProvider → STT A/B` هو `333ddb99e7272130ba50a5dacebe51a7169429e1`. كلها منشورة على فرع `main`.
 
 ## References
 
