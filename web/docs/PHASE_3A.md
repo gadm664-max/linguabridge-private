@@ -65,6 +65,18 @@ flowchart LR
 
 المقطع الافتراضي 4 ثوانٍ، والـhook يوقف التسجيل بأمان وينظف tracks والمؤقتات والمُعرّف عند الإيقاف أو unmount. يظل ذلك chunked upload إلى tRPC، وليس WebRTC أو بثًا متعدد المشاركين.
 
+## الاختبار deterministic وLive Smoke Test
+
+تستخدم الاختبارات الآلية `DeterministicSpeechToTextProvider` الموجود تحت `server/testUtils/` فقط. هذا المزود يعيد response ثابتًا ولا يتصل بالشبكة ولا يقرأ credentials، وهو مخصص للاختبارات ولا يُسجل في Registry production.
+
+يجهز السكربت `scripts/stt-live-smoke.ts` لتشغيل provider المهيأ فعليًا عند توفر إعدادات حقيقية. لا يضع السكربت أي default audio أو credential؛ ويطبع صراحة `REAL PROVIDER TEST = NOT RUN — CREDENTIALS NOT CONFIGURED` عند غياب `BUILT_IN_FORGE_API_URL` أو `BUILT_IN_FORGE_API_KEY`. عند التشغيل، يجب تمرير ملف صوت حقيقي عبر `STT_SMOKE_AUDIO_FILE`، ويمكن تحديد MIME صراحة عبر `STT_SMOKE_MIME_TYPE`، ثم تشغيل:
+
+```bash
+STT_SMOKE_AUDIO_FILE=/path/to/real-fixture.webm pnpm stt:smoke
+```
+
+يجرب السكربت اللغات `ar` و`es` و`en`، ويعرض اسم المزود ونتيجة كل لغة ووقت final transcript بالميلي ثانية دون طباعة النص نفسه. قيمة `firstPartialLatencyMs` تكون `null` حاليًا لأن `manus-whisper` عبر `v1/audio/transcriptions` هو chunk provider غير streaming ولا يعرض partial events؛ ستُقاس هذه القيمة فقط بعد إضافة SpeechProvider يدعم streaming events. لا تُخترع أرقام latency أو success.
+
 ## الملفات المنفذة
 
 | الملف                                         | الدور                                                             |

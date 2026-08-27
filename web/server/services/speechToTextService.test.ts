@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { transcribeAudioBuffer } from "../_core/voiceTranscription";
+import { DeterministicSpeechToTextProvider } from "../testUtils/deterministicSpeechToTextProvider";
 import {
   FallbackSpeechToTextProvider,
   ManusWhisperSpeechToTextProvider,
@@ -123,6 +124,16 @@ describe("SpeechToTextProviderRegistry and fallback chain", () => {
         parseSpeechToTextProviderOrder("STT-A, stt-b, stt-a")
       )
     ).toEqual([providerA, providerB]);
+  });
+
+  it("uses the deterministic test provider without network access", async () => {
+    const deterministicProvider = new DeterministicSpeechToTextProvider(
+      response
+    );
+    await expect(
+      deterministicProvider.transcribeChunk(request)
+    ).resolves.toEqual(response);
+    expect(deterministicProvider.name).toBe("deterministic-test-stt");
   });
 
   it("falls back from STT A to STT B and returns the successful transcript", async () => {

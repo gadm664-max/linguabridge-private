@@ -155,7 +155,7 @@ export function createSpeechToTextProviderRegistry() {
   );
 }
 
-function getDefaultProvider() {
+export function createConfiguredSpeechToTextProvider() {
   try {
     const registry = createSpeechToTextProviderRegistry();
     const providers = registry.resolveMany(
@@ -178,7 +178,9 @@ export async function transcribeChunk(
   input: SpeechToTextRequest,
   provider?: SpeechToTextProvider
 ): Promise<SpeechToTextResult> {
-  return (provider ?? getDefaultProvider()).transcribeChunk(input);
+  return (provider ?? createConfiguredSpeechToTextProvider()).transcribeChunk(
+    input
+  );
 }
 
 export const speechToTextLimits = {
