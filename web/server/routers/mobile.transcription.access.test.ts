@@ -51,6 +51,7 @@ describe("mobile.transcribeAndTranslate access", () => {
 
   it("sends a consenting participant's decoded audio to the server-only Deepgram client", async () => {
     await expect(createCaller().mobile.transcribeAndTranslate(transcriptionInput)).resolves.toMatchObject({ originalText: "مرحبا", translatedText: "Hello" });
+    expect(storageMocks.storagePut).not.toHaveBeenCalled();
     expect(deepgramMocks.transcribeWithDeepgram).toHaveBeenCalledWith(expect.objectContaining({ audio: Buffer.from([1, 2, 3]), mimeType: "audio/m4a", language: "ar" }));
   });
 });

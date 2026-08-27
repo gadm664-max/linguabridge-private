@@ -4,22 +4,12 @@ import { z } from "zod";
 import { appendTranscriptSegment, getMeetingForInvite, isActiveMeetingParticipant, isMeetingPersistenceAllowed } from "../db";
 import { ENV } from "../_core/env";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
-import { storagePut } from "../storage";
 import { transcribeWithDeepgram } from "../services/deepgramTranscription";
 import { translateMeetingText } from "../services/translationService";
 
 const languageCode = z.string().trim().min(2).max(16);
 const audioMimeType = z.enum(["audio/m4a", "audio/mp4", "audio/mpeg", "audio/ogg", "audio/wav", "audio/webm"]);
 const MAX_AUDIO_BYTES = 16 * 1024 * 1024;
-
-const mimeExtensions: Record<z.infer<typeof audioMimeType>, string> = {
-  "audio/m4a": "m4a",
-  "audio/mp4": "m4a",
-  "audio/mpeg": "mp3",
-  "audio/ogg": "ogg",
-  "audio/wav": "wav",
-  "audio/webm": "webm",
-};
 
 export function decodeBase64Audio(payload: string) {
   const normalized = payload.replace(/\s/g, "");
@@ -94,12 +84,6 @@ export const mobileRouter = router({
     }
 
     const audio = decodeBase64Audio(input.audioBase64);
-    const extension = mimeExtensions[input.mimeType];
-    await storagePut(
-      `meeting-audio/${meeting.id}/${ctx.user.id}/${crypto.randomUUID()}.${extension}`,
-      audio,
-      input.mimeType,
-    );
     const transcription = await transcribeWithDeepgram({ audio, mimeType: input.mimeType, language: input.sourceLanguage });
     if ("error" in transcription) {
       throw new TRPCError({ code: "BAD_GATEWAY", message: transcription.error });
