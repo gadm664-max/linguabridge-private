@@ -607,7 +607,7 @@ export default function Meeting() {
                       <span
                         className={`h-1.5 w-1.5 rounded-full ${recording ? "animate-pulse bg-rose-500" : "bg-slate-400"}`}
                       />
-                      {recording ? "النص الحي يعمل" : "النص الحي متوقف"}
+                      {liveTranscriptionStatus}
                     </div>
                     <h2 className="mt-2 text-lg font-bold tracking-[-.035em] text-slate-900">
                       النص والترجمة الفورية
