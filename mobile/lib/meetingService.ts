@@ -13,6 +13,8 @@ export type MeetingInviteDetails = MeetingBootstrap & {
   storageConsent: boolean;
 };
 
+export type MeetingInvitation = MeetingInviteDetails;
+
 export type NativeMeetingHistoryItem = {
   id: number;
   inviteCode: string;
@@ -51,6 +53,25 @@ export async function getNativeMeetingForInvite(inviteCode: string) {
   return getApi().meetings.byInvite.query({
     inviteCode: requireInviteCode(inviteCode),
   }) as Promise<MeetingInviteDetails>;
+}
+
+/** Compatibility name used by the native join screen and its tests. */
+export async function getNativeMeetingInvitation(inviteCode: string) {
+  return getNativeMeetingForInvite(inviteCode);
+}
+
+export async function joinNativeMeeting(input: {
+  inviteCode: string;
+  speakingLanguage: string;
+  displayLanguage: string;
+  storageConsent: boolean;
+  voiceName: string;
+  voiceRate: string;
+}) {
+  return getApi().meetings.join.mutate({
+    ...input,
+    inviteCode: requireInviteCode(input.inviteCode),
+  }) as Promise<MeetingBootstrap>;
 }
 
 export async function getNativeMeetingHistory() {

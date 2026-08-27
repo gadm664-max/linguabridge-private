@@ -5,8 +5,10 @@ const webMeeting = readFileSync(new URL("../client/src/pages/Meeting.tsx", impor
 const mobileMeeting = readFileSync(new URL("../../mobile/app/meeting.tsx", import.meta.url), "utf8");
 
 describe("shared live transcript status integration", () => {
-  it("renders the shared status helper in both clients and gives the web processing state", () => {
-    expect(webMeeting).toContain('recording ? "النص الحي يعمل" : "النص الحي متوقف"');
-    expect(mobileMeeting).toContain('processing ? "جارٍ المعالجة" : listening ? "إيقاف الالتقاط" : "نسخ مقطع صوتي"');
+  it("renders the shared status helper in both clients and derives the current state", () => {
+    expect(webMeeting).toContain("getLiveTranscriptionStatus(");
+    expect(webMeeting).toContain('recording ? "listening" : "idle"');
+    expect(mobileMeeting).toContain("getLiveTranscriptionStatus(");
+    expect(mobileMeeting).toContain('processing ? "processing" : listening ? "listening" : "idle"');
   });
 });

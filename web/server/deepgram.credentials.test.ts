@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 describe("Deepgram credentials", () => {
-  it("authenticates with the read-only projects endpoint without sending audio", async () => {
+  it.skipIf(!process.env.DEEPGRAM_API_KEY)("authenticates with the read-only projects endpoint without sending audio", async () => {
     const apiKey = process.env.DEEPGRAM_API_KEY;
     expect(apiKey).toBeTruthy();
 

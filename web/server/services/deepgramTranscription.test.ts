@@ -1,7 +1,17 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { transcribeWithDeepgram } from "./deepgramTranscription";
 
+const originalDeepgramApiKey = process.env.DEEPGRAM_API_KEY;
+
 describe("transcribeWithDeepgram", () => {
+  beforeEach(() => {
+    process.env.DEEPGRAM_API_KEY = "unit-test-deepgram-key";
+  });
+
+  afterEach(() => {
+    if (originalDeepgramApiKey === undefined) delete process.env.DEEPGRAM_API_KEY;
+    else process.env.DEEPGRAM_API_KEY = originalDeepgramApiKey;
+  });
   it("sends pre-recorded audio from the server with a token header and returns minimal meeting segments", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(new Response(JSON.stringify({
       metadata: { duration: 2.4 },

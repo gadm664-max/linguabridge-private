@@ -22,8 +22,8 @@ describe("MeetingScreen control accessibility", () => {
     let renderer: ReturnType<typeof create>;
     act(() => { renderer = create(<MeetingScreen />); });
     const controls = renderer!.root.findAll(node => String(node.type) === "Pressable" && node.props.accessibilityRole === "button");
-    expect(controls.map(node => node.props.accessibilityLabel)).toEqual(expect.arrayContaining(["كتم الصوت", "نسخ مقطع صوتي", "صوت حي مُدار", "اتصال ثنائي مباشر"]));
-    expect(controls.filter(node => ["كتم الصوت", "نسخ مقطع صوتي", "صوت حي مُدار", "اتصال ثنائي مباشر"].includes(node.props.accessibilityLabel)).every(node => node.props.accessibilityState.selected === false)).toBe(true);
+    expect(controls.map(node => node.props.accessibilityLabel)).toEqual(expect.arrayContaining(["كتم الصوت", "تشغيل النسخ الحي", "صوت حي مُدار", "اتصال ثنائي مباشر"]));
+    expect(controls.filter(node => ["كتم الصوت", "تشغيل النسخ الحي", "صوت حي مُدار", "اتصال ثنائي مباشر"].includes(node.props.accessibilityLabel)).every(node => node.props.accessibilityState.selected === false)).toBe(true);
     const liveStatus = renderer!.root.find(node => String(node.type) === "View" && node.props.accessibilityLiveRegion === "polite");
     expect(liveStatus.props.accessibilityRole).toBe("text");
     expect(liveStatus.props.accessibilityLabel).toBe("النص الحي متوقف");

@@ -48,7 +48,7 @@ function realtimeConfig() {
   };
 }
 
-async function requireActiveParticipant(inviteCode: string, userId: number) {
+export async function requireActiveParticipant(inviteCode: string, userId: number) {
   const meeting = await getMeetingForInvite(inviteCode);
   if (!meeting) throw new TRPCError({ code: "NOT_FOUND", message: "Invitation not found" });
   if (!(await isActiveMeetingParticipant(meeting.id, userId))) {

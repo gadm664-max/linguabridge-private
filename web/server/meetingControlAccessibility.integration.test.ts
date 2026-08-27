@@ -16,9 +16,9 @@ describe("meeting control accessibility", () => {
   it("exposes the toggled states of the primary controls on web and mobile", () => {
     expect(webMeeting).toContain("active?: boolean");
     expect(webMeeting).toContain("active={muteControl.active}");
-    expect(webMeeting).toContain("active={recording}");
+    expect(webMeeting).toContain("active={liveTranscriptionControl.active}");
     expect(mobileMeeting).toContain("active={muted}");
-    expect(mobileMeeting).toContain("active={listening}");
+    expect(mobileMeeting).toContain("active={liveTranscriptionControl.active}");
     expect(mobileMeeting).toContain("active={roomConnected}");
     expect(mobileMeeting).toContain("active={Boolean(directState)}");
   });
