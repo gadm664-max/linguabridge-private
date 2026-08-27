@@ -7,7 +7,7 @@
     "dev": "NODE_ENV=development tsx watch server/_core/index.ts",
     "build": "vite build && esbuild server/_core/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "start": "NODE_ENV=production node dist/index.js",
-    "lint": "prettier --check client/src/hooks/useAudioPipeline.ts client/src/hooks/useAudioPipeline.test.ts client/src/pages/Meeting.tsx server/authRoutes.ts server/translationRoutes.ts server/services/localAuth.ts server/services/localAuth.test.ts server/services/speechToTextService.ts server/services/speechToTextService.test.ts server/testUtils/deterministicSpeechToTextProvider.ts scripts/stt-live-smoke.ts server/services/translationProvider.ts server/services/translationProvider.test.ts server/services/translationService.ts server/services/translationService.test.ts server/routers/voice.ts server/routers/voice.test.ts server/translationRoutes.test.ts server/authRoutes.test.ts server/security.ts server/security.test.ts server/phase21.integration.test.ts server/_core/voiceTranscription.ts server/_core/voiceTranscription.test.ts server/routers.ts drizzle/schema.ts",
+    "lint": "prettier --check client/src/hooks/useAudioPipeline.ts client/src/hooks/useAudioPipeline.test.ts client/src/pages/Meeting.tsx server/authRoutes.ts server/translationRoutes.ts server/services/localAuth.ts server/services/localAuth.test.ts server/services/speechToTextService.ts server/services/speechToTextService.test.ts server/services/speechStreamTransport.ts server/services/speechStreamTransport.test.ts server/testUtils/deterministicSpeechToTextProvider.ts scripts/stt-live-smoke.ts server/services/translationProvider.ts server/services/translationProvider.test.ts server/services/translationService.ts server/services/translationService.test.ts server/routers/voice.ts server/routers/voice.test.ts server/translationRoutes.test.ts server/authRoutes.test.ts server/security.ts server/security.test.ts server/phase21.integration.test.ts server/_core/voiceTranscription.ts server/_core/voiceTranscription.test.ts server/routers.ts drizzle/schema.ts",
     "check": "tsc --noEmit",
     "format": "prettier --write .",
     "test": "vitest run",
@@ -81,6 +81,7 @@
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^1.1.2",
     "wouter": "^3.3.5",
+    "ws": "^8.21.3",
     "zod": "^4.1.12"
   },
   "devDependencies": {
@@ -92,6 +93,7 @@
     "@types/node": "^24.7.0",
     "@types/react": "^19.2.1",
     "@types/react-dom": "^19.2.1",
+    "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^5.0.4",
     "add": "^2.0.6",
     "autoprefixer": "^10.4.20",

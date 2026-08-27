@@ -2,10 +2,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { transcribeAudioBuffer } from "../_core/voiceTranscription";
 import { DeterministicSpeechToTextProvider } from "../testUtils/deterministicSpeechToTextProvider";
 import {
+  DeepgramSpeechProvider,
   FallbackSpeechProvider,
   ManusWhisperSpeechProvider,
   SpeechProviderConfigurationError,
   SpeechProviderRegistry,
+  SpeechProviderStream,
+  type SpeechProviderStreamEvent,
   SpeechServiceError,
   parseSpeechProviderOrder,
 } from "./speechToTextService";
@@ -193,5 +196,60 @@ describe("SpeechToTextProviderRegistry and fallback chain", () => {
     expect(() => registry.resolve("stt-c")).toThrow(
       SpeechProviderConfigurationError
     );
+  });
+});
+
+describe("DeepgramSpeechProvider streaming adapter", () => {
+  it("adapts partial and final events without requiring an API key in tests", async () => {
+    const listeners = new Set<(event: SpeechProviderStreamEvent) => void>();
+    const transport: SpeechProviderStream = {
+      connect: vi.fn().mockResolvedValue(undefined),
+      sendAudio: vi.fn(() => {
+        for (const listener of listeners) {
+          listener({
+            type: "partial",
+            transcript: "hello",
+            startSeconds: 0,
+            durationSeconds: 0.4,
+            rawType: "Results",
+          });
+          listener({
+            type: "final",
+            transcript: "hello world",
+            startSeconds: 0,
+            durationSeconds: 1,
+            rawType: "Results",
+          });
+        }
+      }),
+      close: vi.fn().mockResolvedValue(undefined),
+      reconnect: vi.fn().mockResolvedValue(undefined),
+      onEvent: listener => {
+        listeners.add(listener);
+        return () => {
+          listeners.delete(listener);
+        };
+      },
+    };
+    const provider = new DeepgramSpeechProvider({
+      transportFactory: () => transport,
+    });
+
+    const result = await provider.transcribeStream({
+      audio: Buffer.from([1, 2, 3]),
+      mimeType: "audio/webm",
+      language: "en-US",
+    });
+
+    expect(result.response).toMatchObject({
+      language: "en-US",
+      duration: 1,
+      text: "hello world",
+    });
+    expect(result.firstPartialLatencyMs).toEqual(expect.any(Number));
+    expect(result.finalResultLatencyMs).toEqual(expect.any(Number));
+    expect(transport.connect).toHaveBeenCalledOnce();
+    expect(transport.sendAudio).toHaveBeenCalledWith(Buffer.from([1, 2, 3]));
+    expect(transport.close).toHaveBeenCalledOnce();
   });
 });

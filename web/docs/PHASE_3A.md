@@ -16,8 +16,10 @@ flowchart LR
   R --> B[Base64 audio chunk\nno local persistence]
   B --> T[tRPC voice.transcribeAndTranslate]
   T --> A[Auth + active participant\n+ all-participant consent]
-  A --> P[SpeechToTextProvider]
-  P --> W[Manus Whisper adapter\nserver-side API key]
+  A --> S[SpeechService]
+  S --> P[SpeechProviderRegistry]
+  P --> D[DeepgramSpeechProvider]
+  D --> W[Deepgram WebSocket transport\ninterim + final events]
   W --> I[Partial browser preview\nWeb Speech only when available]
   W --> F[Final Transcript\nserver STT response]
   F --> L[TranslationService]
@@ -49,7 +51,7 @@ flowchart LR
 
 ## طبقة المزود
 
-يعتمد router على `SpeechService` في `server/services/speechToTextService.ts` بدل استدعاء vendor مباشرة. يحتوي هذا الحد على `SpeechProvider` و`SpeechProviderRegistry` و`FallbackSpeechProvider`، وهي تمثل STT A/B في التصميم. يقرأ الترتيب من `STT_PROVIDER`، ولا يسمح إلا بالمزودين المسجلين. التنفيذ الإنتاجي المسجل حاليًا هو `ManusWhisperSpeechProvider` الذي يمرر الطلب إلى `transcribeAudioBuffer` في `server/_core/voiceTranscription.ts` باستخدام endpoint الخادمي `v1/audio/transcriptions` ونموذج `whisper-1`. يمكن إضافة مزود STT B إلى registry أو استبدال implementation لاحقًا دون تعديل عقد router أو واجهة Meeting.
+يعتمد router على `SpeechService` في `server/services/speechToTextService.ts` بدل استدعاء vendor مباشرة. يحتوي هذا الحد على `SpeechService` و`SpeechProvider` و`SpeechProviderRegistry` و`FallbackSpeechProvider`، وهي تمثل STT A/B في التصميم. يقرأ الترتيب من `STT_PROVIDER`، ولا يسمح إلا بالمزودين المسجلين. التنفيذ الإنتاجي الأول هو `DeepgramSpeechProvider` الذي يستخدم نموذج `nova-3` عبر `DeepgramWebSocketTransport` إلى live streaming API، مع interim وfinal events وclose/reconnect methods. يبقى `ManusWhisperSpeechProvider` adapter مسجلًا للتوافق والـfallback الصريح فقط. يمكن إضافة مزود STT B أو استبداله لاحقًا دون تعديل عقد router أو واجهة Meeting.
 
 الترجمة تمر فقط عبر `TranslationService` و`TranslationProvider` الحاليين؛ لا يستدعي مسار الصوت LLM vendor مباشرة من العميل.
 
@@ -57,7 +59,7 @@ flowchart LR
 
 تُحوّل أخطاء المزود إلى أخطاء تطبيقية لا تعيد body المزود أو exception text. تشمل التغطية `FILE_TOO_LARGE`، و`INVALID_FORMAT`، و`AUTHENTICATION_FAILED` لحالتي 401/403، و`RATE_LIMITED` لحالة 429، و`TIMEOUT`، و`NETWORK_FAILURE`، و`MALFORMED_RESPONSE`. عند توفر `Retry-After` من مزود STT يُمرر للخارج كقيمة ثوانٍ رقمية في HTTP header، دون كشف أي نص إضافي.
 
-مهلة طلب STT هي 20 ثانية. لا يوجد اختبار مزود حي ضمن الاختبارات؛ الاختبارات تستخدم mocks deterministic وتتحقق من العقد والتحويلات والحالات الفاشلة. يلزم توفر `BUILT_IN_FORGE_API_URL` و`BUILT_IN_FORGE_API_KEY` في بيئة التشغيل لنجاح STT الفعلي، وتبقى هذه القيم server-side فقط.
+مهلة اتصال Deepgram هي 20 ثانية. الاختبارات الآلية تستخدم mocks و`DeterministicSpeechToTextProvider`، ولا تُعد اختبارًا حيًا. يلزم توفر `DEEPGRAM_API_KEY` server-side فقط لنجاح STT الحقيقي؛ لا يستخدم Deepgram مسار `BUILT_IN_FORGE_API_KEY` كـproduction STT credential.
 
 ## متطلبات المتصفح والقيود
 
@@ -69,20 +71,21 @@ flowchart LR
 
 تستخدم الاختبارات الآلية `DeterministicSpeechToTextProvider` الموجود تحت `server/testUtils/` فقط. هذا المزود يطبق `SpeechProvider`، ويعيد response ثابتًا ولا يتصل بالشبكة ولا يقرأ credentials، وهو مخصص للاختبارات ولا يُسجل في Registry production.
 
-يجهز السكربت `scripts/stt-live-smoke.ts` لتشغيل provider المهيأ فعليًا عند توفر إعدادات حقيقية. لا يضع السكربت أي default audio أو credential؛ ويطبع صراحة `REAL PROVIDER TEST = NOT RUN — CREDENTIALS NOT CONFIGURED` عند غياب `BUILT_IN_FORGE_API_URL` أو `BUILT_IN_FORGE_API_KEY`. عند التشغيل، يجب تمرير ملف صوت حقيقي عبر `STT_SMOKE_AUDIO_FILE`، ويمكن تحديد MIME صراحة عبر `STT_SMOKE_MIME_TYPE`، ثم تشغيل:
+يجهز السكربت `scripts/stt-live-smoke.ts` لتشغيل `DeepgramSpeechProvider` الحقيقي فقط عند توفر إعدادات حقيقية. لا يضع السكربت أي default audio أو credential؛ ويطبع صراحة `REAL_PROVIDER_VERIFIED = NO` و`REASON = DEEPGRAM_API_KEY_NOT_CONFIGURED` عند غياب `DEEPGRAM_API_KEY`. عند التشغيل، يجب تمرير fixture صوت حقيقي عبر `STT_SMOKE_AUDIO_AR` و`STT_SMOKE_AUDIO_ES` و`STT_SMOKE_AUDIO_EN`، أو `STT_SMOKE_AUDIO_FILE` كمسار مشترك صريح، ويمكن تحديد MIME عبر `STT_SMOKE_MIME_TYPE`، ثم تشغيل:
 
 ```bash
 STT_SMOKE_AUDIO_FILE=/path/to/real-fixture.webm pnpm stt:smoke
 ```
 
-يجرب السكربت اللغات `ar` و`es` و`en`، ويعرض اسم المزود ونتيجة كل لغة ووقت final transcript بالميلي ثانية دون طباعة النص نفسه. قيمة `firstPartialLatencyMs` تكون `null` حاليًا لأن `manus-whisper` عبر `v1/audio/transcriptions` هو chunk provider غير streaming ولا يعرض partial events؛ ستُقاس هذه القيمة فقط بعد إضافة SpeechProvider يدعم streaming events. لا تُخترع أرقام latency أو success.
+يجرب السكربت اللغات `ar` و`ar-EG` عند اختيار fixture العربية المصرية، و`es`/`es-ES`، و`en`/`en-US` وفق إعدادات provider، ويعرض اسم المزود والنموذج وصيغة الصوت والمدة وdetected language وfirst partial latency وfinal result latency لكل لغة دون طباعة النص افتراضيًا. قيمة `firstPartialLatencyMs` تُقاس من interim event في Deepgram streaming؛ لا تُخترع أرقام latency أو success. بعد نجاح STT للغات المطلوبة، ينفذ السكربت مرة واحدة Arabic → Deepgram STT → final transcript → existing TranslationService → Spanish.
 
 ## الملفات المنفذة
 
 | الملف                                         | الدور                                                             |
 | --------------------------------------------- | ----------------------------------------------------------------- |
 | `server/routers/voice.ts`                     | عقد tRPC والتفويض وربط STT بالترجمة                               |
-| `server/services/speechToTextService.ts`      | provider interface وManus Whisper adapter                         |
+| `server/services/speechToTextService.ts`      | `SpeechService` و`SpeechProvider` registry وDeepgram/Manus adapters |
+| `server/services/speechStreamTransport.ts`    | WebSocket transport وinterim/final events وclose/reconnect         |
 | `server/_core/voiceTranscription.ts`          | HTTP STT helper والمهلة وتطبيع استجابات المزود                    |
 | `client/src/hooks/useAudioPipeline.ts`        | microphone، MediaRecorder، partial preview، backpressure، cleanup |
 | `client/src/pages/Meeting.tsx`                | عرض partial وإضافة final transcript + translation                 |

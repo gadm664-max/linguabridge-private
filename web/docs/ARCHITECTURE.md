@@ -16,8 +16,11 @@ Browser
         │     └── TranslationProviderRegistry → Provider A / Provider B / Provider C
         │           └── ManusLlmTranslationProvider (registered production provider)
         ├── services/speechToTextService
-        │     └── SpeechProvider → STT A / STT B
-        │           └── ManusWhisperSpeechProvider (registered production provider)
+        │     └── SpeechService → SpeechProviderRegistry → STT A / STT B
+        │           ├── DeepgramSpeechProvider (registered production provider)
+        │           └── ManusWhisperSpeechProvider (explicit compatibility/fallback provider)
+        ├── services/speechStreamTransport
+        │     └── Deepgram WebSocket → interim/final/close/reconnect events
         └── Drizzle repositories → MySQL/TiDB schema
 ```
 
@@ -41,6 +44,6 @@ Browser
 
 ## Phase 3A — الصوت القصير والنص المترجم
 
-تضيف Phase 3A مسارًا محدودًا من `MediaRecorder` في المتصفح إلى `voice.transcribeAndTranslate` عبر tRPC، مع chunks افتراضية مدتها 4 ثوانٍ. يتحقق الخادم من الجلسة، والعضوية الفعالة، وموافقة جميع المشاركين قبل معالجة الصوت. يمر STT عبر `SpeechService` و`SpeechProvider` مع registry/fallback داخلي لـSTT A/B، بينما تمر الترجمة عبر `TranslationService` و`TranslationProviderRegistry`. لا يُخزن الصوت الخام؛ ويُحفظ النص النهائي فقط عبر مسار الاجتماع القائم عندما تسمح سياسة الموافقة. المزود المسجل فعليًا حاليًا هو `ManusWhisperSpeechProvider` باسم `manus-whisper`، مع `STT_PROVIDER` لترتيب المزودين المسجلين.
+تضيف Phase 3A مسارًا محدودًا من `MediaRecorder` في المتصفح إلى `voice.transcribeAndTranslate` عبر tRPC، مع chunks افتراضية مدتها 4 ثوانٍ. يتحقق الخادم من الجلسة، والعضوية الفعالة، وموافقة جميع المشاركين قبل معالجة الصوت. يمر STT عبر `SpeechService` و`SpeechProviderRegistry` و`DeepgramSpeechProvider` مع `DeepgramWebSocketTransport` للـinterim/final events، مع fallback صريح إلى `ManusWhisperSpeechProvider` عند اختياره في `STT_PROVIDER`. تمر الترجمة عبر `TranslationService` و`TranslationProviderRegistry`. لا يُخزن الصوت الخام؛ ويُحفظ النص النهائي فقط عبر مسار الاجتماع القائم عندما تسمح سياسة الموافقة. credential الإنتاج لـDeepgram هو `DEEPGRAM_API_KEY` server-side فقط، ولا يظهر في client أو logs أو GitHub.
 
-التفاصيل التشغيلية والعقود والقيود موثقة في [`PHASE_3A.md`](./PHASE_3A.md). لا تشمل هذه المرحلة WebRTC أو الصوت متعدد المشاركين أو WhatsApp أو meeting intelligence أو أي تشغيل خلفي.
+التفاصيل التشغيلية والعقود والقيود موثقة في [`PHASE_3A.md`](./PHASE_3A.md). تُفصل طبقة النقل WebSocket عن provider adapter، ولا تشمل هذه المرحلة WebRTC أو الصوت متعدد المشاركين أو WhatsApp أو meeting intelligence أو أي تشغيل خلفي.

@@ -5,17 +5,31 @@ import {
   type TranscriptionResponse,
 } from "../_core/voiceTranscription";
 import { ENV } from "../_core/env";
+import {
+  DeepgramWebSocketTransport,
+  SpeechStreamError,
+  type SpeechStreamEvent,
+  type SpeechStreamTransport,
+} from "./speechStreamTransport";
 
 export type SpeechRequest = TranscribeBufferOptions & {
   context?: string;
 };
 
 export type SpeechResult = TranscriptionResponse;
+export type SpeechStreamingResult = {
+  response: SpeechResult;
+  firstPartialLatencyMs: number | null;
+  finalResultLatencyMs: number | null;
+};
+export type SpeechProviderStreamEvent = SpeechStreamEvent;
+export type SpeechProviderStream = SpeechStreamTransport;
 
 export interface SpeechProvider {
   readonly name: string;
   readonly model: string;
   transcribeChunk(input: SpeechRequest): Promise<SpeechResult>;
+  createStream?(input: SpeechRequest): Promise<SpeechProviderStream>;
 }
 
 export type SpeechProviderFactory = () => SpeechProvider;
@@ -62,6 +76,44 @@ function mapError(error: TranscriptionError) {
   );
 }
 
+function mapStreamError(error: SpeechStreamError) {
+  return new SpeechServiceError(
+    error.code,
+    error.message,
+    error.statusCode,
+    error.retryAfterMs
+  );
+}
+
+function normalizeDeepgramLanguage(language?: string) {
+  const normalized = language?.trim().toLowerCase() || "en";
+  if (normalized === "ar-eg") return "ar-EG";
+  if (normalized === "ar") return "ar";
+  if (normalized === "es-es") return "es";
+  if (normalized === "es") return "es";
+  if (normalized === "en-us") return "en-US";
+  if (normalized === "en") return "en";
+  return language?.trim() || "en";
+}
+
+function toSegment(
+  event: Extract<SpeechStreamEvent, { type: "final" }>,
+  index: number
+) {
+  return {
+    id: index,
+    seek: 0,
+    start: event.startSeconds,
+    end: event.startSeconds + event.durationSeconds,
+    text: event.transcript,
+    tokens: [],
+    temperature: 0,
+    avg_logprob: 0,
+    compression_ratio: 0,
+    no_speech_prob: 0,
+  };
+}
+
 export class ManusWhisperSpeechProvider implements SpeechProvider {
   readonly name = "manus-whisper";
   readonly model = "whisper-1";
@@ -75,6 +127,130 @@ export class ManusWhisperSpeechProvider implements SpeechProvider {
     });
     if ("error" in result) throw mapError(result);
     return result;
+  }
+}
+
+export type DeepgramSpeechProviderOptions = {
+  apiKey?: string;
+  transportFactory?: (
+    options: ConstructorParameters<typeof DeepgramWebSocketTransport>[0]
+  ) => SpeechProviderStream;
+};
+
+export class DeepgramSpeechProvider implements SpeechProvider {
+  readonly name = "deepgram";
+  readonly model = "nova-3";
+  private readonly apiKey: string;
+  private readonly transportFactory: NonNullable<
+    DeepgramSpeechProviderOptions["transportFactory"]
+  >;
+  private readonly hasInjectedTransport: boolean;
+
+  constructor(options: DeepgramSpeechProviderOptions = {}) {
+    this.apiKey = options.apiKey ?? ENV.deepgramApiKey;
+    this.hasInjectedTransport = Boolean(options.transportFactory);
+    this.transportFactory =
+      options.transportFactory ??
+      (transportOptions => new DeepgramWebSocketTransport(transportOptions));
+  }
+
+  async createStream(input: SpeechRequest) {
+    if (!this.apiKey && !this.hasInjectedTransport) {
+      throw new SpeechServiceError(
+        "AUTHENTICATION_FAILED",
+        "Speech provider authentication is missing",
+        502
+      );
+    }
+    const transport = this.transportFactory({
+      apiKey: this.apiKey,
+      language: normalizeDeepgramLanguage(input.language),
+      model: this.model,
+      interimResults: true,
+      endpointingMs: 300,
+    });
+    try {
+      await transport.connect();
+      return transport;
+    } catch (error) {
+      if (error instanceof SpeechStreamError) throw mapStreamError(error);
+      throw new SpeechServiceError(
+        "NETWORK_FAILURE",
+        "Speech provider connection failed",
+        503
+      );
+    }
+  }
+
+  async transcribeStream(input: SpeechRequest): Promise<SpeechStreamingResult> {
+    let stream: SpeechProviderStream | undefined;
+    const finalEvents: Array<Extract<SpeechStreamEvent, { type: "final" }>> =
+      [];
+    let streamError: SpeechServiceError | undefined;
+    let firstPartialLatencyMs: number | null = null;
+    let finalResultLatencyMs: number | null = null;
+    const startedAt = performance.now();
+    try {
+      stream = await this.createStream(input);
+      const unsubscribe = stream.onEvent(event => {
+        if (event.type === "partial" && firstPartialLatencyMs === null) {
+          firstPartialLatencyMs = Math.round(performance.now() - startedAt);
+        }
+        if (event.type === "final") {
+          finalEvents.push(event);
+          if (finalResultLatencyMs === null) {
+            finalResultLatencyMs = Math.round(performance.now() - startedAt);
+          }
+        }
+        if (event.type === "provider_error") {
+          streamError = mapStreamError(event.error);
+        }
+      });
+      stream.sendAudio(input.audio);
+      await stream.close();
+      unsubscribe();
+    } catch (error) {
+      if (error instanceof SpeechServiceError) throw error;
+      if (error instanceof SpeechStreamError) throw mapStreamError(error);
+      throw new SpeechServiceError(
+        "NETWORK_FAILURE",
+        "Speech provider streaming request failed",
+        503
+      );
+    }
+    if (streamError) throw streamError;
+    if (!finalEvents.length) {
+      throw new SpeechServiceError(
+        "MALFORMED_RESPONSE",
+        "Speech provider returned no final transcript",
+        502
+      );
+    }
+    const text = finalEvents
+      .map(event => event.transcript)
+      .join(" ")
+      .trim();
+    const duration = finalEvents.reduce(
+      (latest, event) =>
+        Math.max(latest, event.startSeconds + event.durationSeconds),
+      0
+    );
+    return {
+      response: {
+        task: "transcribe" as const,
+        language: normalizeDeepgramLanguage(input.language),
+        duration,
+        text,
+        segments: finalEvents.map(toSegment),
+      },
+      firstPartialLatencyMs,
+      finalResultLatencyMs,
+    };
+  }
+
+  async transcribeChunk(input: SpeechRequest) {
+    const { response } = await this.transcribeStream(input);
+    return response;
   }
 }
 
@@ -143,14 +319,13 @@ export function parseSpeechProviderOrder(value: string) {
     .split(",")
     .map(name => name.trim().toLowerCase())
     .filter(Boolean);
-  return Array.from(new Set(names.length ? names : ["manus-whisper"]));
+  return Array.from(new Set(names.length ? names : ["deepgram"]));
 }
 
 export function createSpeechProviderRegistry() {
-  return new SpeechProviderRegistry().register(
-    "manus-whisper",
-    () => new ManusWhisperSpeechProvider()
-  );
+  return new SpeechProviderRegistry()
+    .register("deepgram", () => new DeepgramSpeechProvider())
+    .register("manus-whisper", () => new ManusWhisperSpeechProvider());
 }
 
 export function createConfiguredSpeechProvider() {
@@ -179,6 +354,19 @@ export class SpeechService {
 
   transcribeChunk(input: SpeechRequest) {
     return this.provider.transcribeChunk(input);
+  }
+
+  createStream(input: SpeechRequest) {
+    if (!this.provider.createStream) {
+      return Promise.reject(
+        new SpeechServiceError(
+          "SERVICE_ERROR",
+          "Speech provider does not support streaming",
+          501
+        )
+      );
+    }
+    return this.provider.createStream(input);
   }
 
   get providerName() {
