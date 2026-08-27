@@ -49,7 +49,7 @@ flowchart LR
 
 ## طبقة المزود
 
-يعتمد router على `SpeechToTextService` في `server/services/speechToTextService.ts` بدل استدعاء vendor مباشرة. يحتوي هذا الحد على `SpeechToTextProvider` و`SpeechToTextProviderRegistry` و`FallbackSpeechToTextProvider`، وهي تمثل STT A/B/C في التصميم. يقرأ الترتيب من `STT_PROVIDER`، ولا يسمح إلا بالمزودين المسجلين. التنفيذ الإنتاجي المسجل حاليًا هو `ManusWhisperSpeechToTextProvider` الذي يمرر الطلب إلى `transcribeAudioBuffer` في `server/_core/voiceTranscription.ts` باستخدام endpoint الخادمي `v1/audio/transcriptions` ونموذج `whisper-1`. يمكن إضافة مزود جديد إلى registry أو استبدال implementation لاحقًا دون تعديل عقد router أو واجهة Meeting.
+يعتمد router على `SpeechService` في `server/services/speechToTextService.ts` بدل استدعاء vendor مباشرة. يحتوي هذا الحد على `SpeechProvider` و`SpeechProviderRegistry` و`FallbackSpeechProvider`، وهي تمثل STT A/B في التصميم. يقرأ الترتيب من `STT_PROVIDER`، ولا يسمح إلا بالمزودين المسجلين. التنفيذ الإنتاجي المسجل حاليًا هو `ManusWhisperSpeechProvider` الذي يمرر الطلب إلى `transcribeAudioBuffer` في `server/_core/voiceTranscription.ts` باستخدام endpoint الخادمي `v1/audio/transcriptions` ونموذج `whisper-1`. يمكن إضافة مزود STT B إلى registry أو استبدال implementation لاحقًا دون تعديل عقد router أو واجهة Meeting.
 
 الترجمة تمر فقط عبر `TranslationService` و`TranslationProvider` الحاليين؛ لا يستدعي مسار الصوت LLM vendor مباشرة من العميل.
 
@@ -67,7 +67,7 @@ flowchart LR
 
 ## الاختبار deterministic وLive Smoke Test
 
-تستخدم الاختبارات الآلية `DeterministicSpeechToTextProvider` الموجود تحت `server/testUtils/` فقط. هذا المزود يعيد response ثابتًا ولا يتصل بالشبكة ولا يقرأ credentials، وهو مخصص للاختبارات ولا يُسجل في Registry production.
+تستخدم الاختبارات الآلية `DeterministicSpeechToTextProvider` الموجود تحت `server/testUtils/` فقط. هذا المزود يطبق `SpeechProvider`، ويعيد response ثابتًا ولا يتصل بالشبكة ولا يقرأ credentials، وهو مخصص للاختبارات ولا يُسجل في Registry production.
 
 يجهز السكربت `scripts/stt-live-smoke.ts` لتشغيل provider المهيأ فعليًا عند توفر إعدادات حقيقية. لا يضع السكربت أي default audio أو credential؛ ويطبع صراحة `REAL PROVIDER TEST = NOT RUN — CREDENTIALS NOT CONFIGURED` عند غياب `BUILT_IN_FORGE_API_URL` أو `BUILT_IN_FORGE_API_KEY`. عند التشغيل، يجب تمرير ملف صوت حقيقي عبر `STT_SMOKE_AUDIO_FILE`، ويمكن تحديد MIME صراحة عبر `STT_SMOKE_MIME_TYPE`، ثم تشغيل:
 

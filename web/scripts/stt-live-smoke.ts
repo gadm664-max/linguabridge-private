@@ -3,8 +3,8 @@ import { readFile } from "node:fs/promises";
 import { extname } from "node:path";
 import { performance } from "node:perf_hooks";
 import {
-  createConfiguredSpeechToTextProvider,
-  SpeechToTextServiceError,
+  createConfiguredSpeechProvider,
+  SpeechServiceError,
   speechToTextLimits,
 } from "../server/services/speechToTextService";
 import {
@@ -92,7 +92,7 @@ async function main() {
     notRun(`AUDIO FIXTURES NOT PROVIDED FOR: ${missingLanguages.join(", ")}`);
   }
 
-  const provider = createConfiguredSpeechToTextProvider();
+  const provider = createConfiguredSpeechProvider();
   const showTranscript = includeTranscript();
   const results: SmokeResult[] = [];
   const audioByLanguage = new Map<
@@ -127,7 +127,7 @@ async function main() {
       });
     } catch (error) {
       const serviceError =
-        error instanceof SpeechToTextServiceError ? error : undefined;
+        error instanceof SpeechServiceError ? error : undefined;
       results.push({
         provider: provider.name,
         model: provider.model,
@@ -170,7 +170,7 @@ async function main() {
 }
 
 async function runArabicToSpanishChain(
-  provider: ReturnType<typeof createConfiguredSpeechToTextProvider>,
+  provider: ReturnType<typeof createConfiguredSpeechProvider>,
   results: SmokeResult[],
   arabicFixture: { audio: Buffer; mimeType: string } | undefined,
   showTranscript: boolean
@@ -203,7 +203,7 @@ async function runArabicToSpanishChain(
       provider: provider.name,
       model: provider.model,
       errorCode:
-        error instanceof SpeechToTextServiceError ? error.code : "STT_FAILURE",
+        error instanceof SpeechServiceError ? error.code : "STT_FAILURE",
     };
   }
   const sttLatencyMs = Math.round(performance.now() - sttStartedAt);
@@ -255,9 +255,7 @@ main().catch(error => {
     JSON.stringify({
       success: false,
       errorCode:
-        error instanceof SpeechToTextServiceError
-          ? error.code
-          : "SMOKE_TEST_FAILURE",
+        error instanceof SpeechServiceError ? error.code : "SMOKE_TEST_FAILURE",
     })
   );
   process.exitCode = 1;

@@ -2,20 +2,20 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { transcribeAudioBuffer } from "../_core/voiceTranscription";
 import { DeterministicSpeechToTextProvider } from "../testUtils/deterministicSpeechToTextProvider";
 import {
-  FallbackSpeechToTextProvider,
-  ManusWhisperSpeechToTextProvider,
-  SpeechToTextProviderConfigurationError,
-  SpeechToTextProviderRegistry,
-  SpeechToTextServiceError,
-  parseSpeechToTextProviderOrder,
+  FallbackSpeechProvider,
+  ManusWhisperSpeechProvider,
+  SpeechProviderConfigurationError,
+  SpeechProviderRegistry,
+  SpeechServiceError,
+  parseSpeechProviderOrder,
 } from "./speechToTextService";
 
 vi.mock("../_core/voiceTranscription", () => ({
   transcribeAudioBuffer: vi.fn(),
 }));
 
-describe("ManusWhisperSpeechToTextProvider", () => {
-  const provider = new ManusWhisperSpeechToTextProvider();
+describe("ManusWhisperSpeechProvider", () => {
+  const provider = new ManusWhisperSpeechProvider();
 
   beforeEach(() => vi.resetAllMocks());
 
@@ -83,7 +83,7 @@ describe("ManusWhisperSpeechToTextProvider", () => {
       });
       throw new Error("expected provider to fail");
     } catch (error) {
-      expect(error).toBeInstanceOf(SpeechToTextServiceError);
+      expect(error).toBeInstanceOf(SpeechServiceError);
       expect(error).toMatchObject({
         code: "RATE_LIMITED",
         statusCode: 429,
@@ -104,7 +104,7 @@ describe("SpeechToTextProviderRegistry and fallback chain", () => {
   };
 
   it("normalizes provider names and preserves configured order without duplicates", () => {
-    const registry = new SpeechToTextProviderRegistry();
+    const registry = new SpeechProviderRegistry();
     const providerA = {
       name: "stt-a",
       model: "a-model",
@@ -120,9 +120,7 @@ describe("SpeechToTextProviderRegistry and fallback chain", () => {
       .register("stt-b", () => providerB);
 
     expect(
-      registry.resolveMany(
-        parseSpeechToTextProviderOrder("STT-A, stt-b, stt-a")
-      )
+      registry.resolveMany(parseSpeechProviderOrder("STT-A, stt-b, stt-a"))
     ).toEqual([providerA, providerB]);
   });
 
@@ -143,7 +141,7 @@ describe("SpeechToTextProviderRegistry and fallback chain", () => {
       transcribeChunk: vi
         .fn()
         .mockRejectedValue(
-          new SpeechToTextServiceError("NETWORK_FAILURE", "safe failure", 503)
+          new SpeechServiceError("NETWORK_FAILURE", "safe failure", 503)
         ),
     };
     const providerB = {
@@ -153,7 +151,7 @@ describe("SpeechToTextProviderRegistry and fallback chain", () => {
     };
 
     await expect(
-      new FallbackSpeechToTextProvider([providerA, providerB]).transcribeChunk(
+      new FallbackSpeechProvider([providerA, providerB]).transcribeChunk(
         request
       )
     ).resolves.toEqual(response);
@@ -167,9 +165,7 @@ describe("SpeechToTextProviderRegistry and fallback chain", () => {
       model: "a-model",
       transcribeChunk: vi
         .fn()
-        .mockRejectedValue(
-          new SpeechToTextServiceError("TIMEOUT", "timeout", 504)
-        ),
+        .mockRejectedValue(new SpeechServiceError("TIMEOUT", "timeout", 504)),
     };
     const providerB = {
       name: "stt-b",
@@ -177,17 +173,12 @@ describe("SpeechToTextProviderRegistry and fallback chain", () => {
       transcribeChunk: vi
         .fn()
         .mockRejectedValue(
-          new SpeechToTextServiceError(
-            "RATE_LIMITED",
-            "rate limited",
-            429,
-            2000
-          )
+          new SpeechServiceError("RATE_LIMITED", "rate limited", 429, 2000)
         ),
     };
 
     await expect(
-      new FallbackSpeechToTextProvider([providerA, providerB]).transcribeChunk(
+      new FallbackSpeechProvider([providerA, providerB]).transcribeChunk(
         request
       )
     ).rejects.toMatchObject({
@@ -198,9 +189,9 @@ describe("SpeechToTextProviderRegistry and fallback chain", () => {
   });
 
   it("fails closed for an unregistered configured STT provider", () => {
-    const registry = new SpeechToTextProviderRegistry();
+    const registry = new SpeechProviderRegistry();
     expect(() => registry.resolve("stt-c")).toThrow(
-      SpeechToTextProviderConfigurationError
+      SpeechProviderConfigurationError
     );
   });
 });

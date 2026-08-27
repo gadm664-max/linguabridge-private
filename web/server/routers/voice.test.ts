@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { appRouter } from "../routers";
 import type { TrpcContext } from "../_core/context";
 import {
-  SpeechToTextServiceError,
+  SpeechServiceError,
   transcribeChunk,
 } from "../services/speechToTextService";
 import { translateMeetingText } from "../services/translationService";
@@ -17,7 +17,7 @@ vi.mock("../db", () => ({
   isMeetingPersistenceAllowed: vi.fn(async () => true),
 }));
 vi.mock("../services/speechToTextService", () => ({
-  SpeechToTextServiceError: class SpeechToTextServiceError extends Error {},
+  SpeechServiceError: class SpeechServiceError extends Error {},
   transcribeChunk: vi.fn(),
 }));
 vi.mock("../services/translationService", () => ({
@@ -146,7 +146,7 @@ describe("voice.transcribeAndTranslate", () => {
 
   it("maps STT rate limits and exposes only a numeric Retry-After header", async () => {
     const error = Object.assign(
-      new SpeechToTextServiceError(
+      new SpeechServiceError(
         "RATE_LIMITED",
         "safe rate limit message",
         429,

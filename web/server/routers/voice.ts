@@ -4,7 +4,7 @@ import { decodeBase64Audio, requireActiveParticipant } from "./mobile";
 import { isMeetingPersistenceAllowed } from "../db";
 import { protectedProcedure, router } from "../_core/trpc";
 import {
-  SpeechToTextServiceError,
+  SpeechServiceError,
   transcribeChunk,
 } from "../services/speechToTextService";
 import {
@@ -42,7 +42,7 @@ function toTrpcCode(
 }
 
 function throwProviderError(
-  error: SpeechToTextServiceError | TranslationServiceError,
+  error: SpeechServiceError | TranslationServiceError,
   response: { setHeader?: (name: string, value: string) => void }
 ) {
   if (error.retryAfterMs && response.setHeader) {
@@ -92,7 +92,7 @@ export const voiceRouter = router({
             "Transcribe this short meeting audio clip accurately. Return only spoken content.",
         });
       } catch (error) {
-        if (error instanceof SpeechToTextServiceError)
+        if (error instanceof SpeechServiceError)
           throwProviderError(error, ctx.res);
         throw new TRPCError({
           code: "SERVICE_UNAVAILABLE",

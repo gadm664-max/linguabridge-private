@@ -6,21 +6,21 @@ import {
 } from "../_core/voiceTranscription";
 import { ENV } from "../_core/env";
 
-export type SpeechToTextRequest = TranscribeBufferOptions & {
+export type SpeechRequest = TranscribeBufferOptions & {
   context?: string;
 };
 
-export type SpeechToTextResult = TranscriptionResponse;
+export type SpeechResult = TranscriptionResponse;
 
-export interface SpeechToTextProvider {
+export interface SpeechProvider {
   readonly name: string;
   readonly model: string;
-  transcribeChunk(input: SpeechToTextRequest): Promise<SpeechToTextResult>;
+  transcribeChunk(input: SpeechRequest): Promise<SpeechResult>;
 }
 
-export type SpeechToTextProviderFactory = () => SpeechToTextProvider;
+export type SpeechProviderFactory = () => SpeechProvider;
 
-export class SpeechToTextServiceError extends Error {
+export class SpeechServiceError extends Error {
   constructor(
     public readonly code: TranscriptionError["code"],
     message: string,
@@ -28,14 +28,14 @@ export class SpeechToTextServiceError extends Error {
     public readonly retryAfterMs?: number
   ) {
     super(message);
-    this.name = "SpeechToTextServiceError";
+    this.name = "SpeechServiceError";
   }
 }
 
-export class SpeechToTextProviderConfigurationError extends Error {
+export class SpeechProviderConfigurationError extends Error {
   constructor(providerName: string) {
-    super(`Speech-to-text provider is not configured: ${providerName}`);
-    this.name = "SpeechToTextProviderConfigurationError";
+    super(`Speech provider is not configured: ${providerName}`);
+    this.name = "SpeechProviderConfigurationError";
   }
 }
 
@@ -54,7 +54,7 @@ function mapError(error: TranscriptionError) {
               : error.code === "NETWORK_FAILURE"
                 ? 503
                 : 502;
-  return new SpeechToTextServiceError(
+  return new SpeechServiceError(
     error.code,
     error.error,
     statusCode,
@@ -62,11 +62,11 @@ function mapError(error: TranscriptionError) {
   );
 }
 
-export class ManusWhisperSpeechToTextProvider implements SpeechToTextProvider {
+export class ManusWhisperSpeechProvider implements SpeechProvider {
   readonly name = "manus-whisper";
   readonly model = "whisper-1";
 
-  async transcribeChunk(input: SpeechToTextRequest) {
+  async transcribeChunk(input: SpeechRequest) {
     const result = await transcribeAudioBuffer({
       audio: input.audio,
       mimeType: input.mimeType,
@@ -78,13 +78,13 @@ export class ManusWhisperSpeechToTextProvider implements SpeechToTextProvider {
   }
 }
 
-/** Registry for replaceable STT providers (STT A/B/C in the architecture). */
-export class SpeechToTextProviderRegistry {
-  private readonly factories = new Map<string, SpeechToTextProviderFactory>();
+/** Registry for replaceable STT providers (STT A / STT B). */
+export class SpeechProviderRegistry {
+  private readonly factories = new Map<string, SpeechProviderFactory>();
 
-  register(name: string, factory: SpeechToTextProviderFactory) {
+  register(name: string, factory: SpeechProviderFactory) {
     const normalizedName = name.trim().toLowerCase();
-    if (!normalizedName) throw new SpeechToTextProviderConfigurationError(name);
+    if (!normalizedName) throw new SpeechProviderConfigurationError(name);
     this.factories.set(normalizedName, factory);
     return this;
   }
@@ -92,8 +92,7 @@ export class SpeechToTextProviderRegistry {
   resolve(name: string) {
     const normalizedName = name.trim().toLowerCase();
     const factory = this.factories.get(normalizedName);
-    if (!factory)
-      throw new SpeechToTextProviderConfigurationError(normalizedName);
+    if (!factory) throw new SpeechProviderConfigurationError(normalizedName);
     return factory();
   }
 
@@ -103,44 +102,43 @@ export class SpeechToTextProviderRegistry {
 }
 
 /** Executes registered STT providers in configured order until one succeeds. */
-export class FallbackSpeechToTextProvider implements SpeechToTextProvider {
+export class FallbackSpeechProvider implements SpeechProvider {
   readonly name: string;
   readonly model = "fallback";
 
-  constructor(private readonly providers: SpeechToTextProvider[]) {
-    if (!providers.length)
-      throw new SpeechToTextProviderConfigurationError("empty");
+  constructor(private readonly providers: SpeechProvider[]) {
+    if (!providers.length) throw new SpeechProviderConfigurationError("empty");
     this.name = `fallback(${providers.map(provider => provider.name).join(",")})`;
   }
 
-  async transcribeChunk(input: SpeechToTextRequest) {
-    let lastError: SpeechToTextServiceError | undefined;
+  async transcribeChunk(input: SpeechRequest) {
+    let lastError: SpeechServiceError | undefined;
     for (const provider of this.providers) {
       try {
         return await provider.transcribeChunk(input);
       } catch (error) {
         lastError =
-          error instanceof SpeechToTextServiceError
+          error instanceof SpeechServiceError
             ? error
-            : new SpeechToTextServiceError(
+            : new SpeechServiceError(
                 "NETWORK_FAILURE",
-                "Speech-to-text provider unavailable",
+                "Speech provider unavailable",
                 503
               );
       }
     }
     throw (
       lastError ??
-      new SpeechToTextServiceError(
+      new SpeechServiceError(
         "NETWORK_FAILURE",
-        "Speech-to-text provider unavailable",
+        "Speech provider unavailable",
         503
       )
     );
   }
 }
 
-export function parseSpeechToTextProviderOrder(value: string) {
+export function parseSpeechProviderOrder(value: string) {
   const names = value
     .split(",")
     .map(name => name.trim().toLowerCase())
@@ -148,42 +146,79 @@ export function parseSpeechToTextProviderOrder(value: string) {
   return Array.from(new Set(names.length ? names : ["manus-whisper"]));
 }
 
-export function createSpeechToTextProviderRegistry() {
-  return new SpeechToTextProviderRegistry().register(
+export function createSpeechProviderRegistry() {
+  return new SpeechProviderRegistry().register(
     "manus-whisper",
-    () => new ManusWhisperSpeechToTextProvider()
+    () => new ManusWhisperSpeechProvider()
   );
 }
 
-export function createConfiguredSpeechToTextProvider() {
+export function createConfiguredSpeechProvider() {
   try {
-    const registry = createSpeechToTextProviderRegistry();
+    const registry = createSpeechProviderRegistry();
     const providers = registry.resolveMany(
-      parseSpeechToTextProviderOrder(ENV.speechToTextProvider)
+      parseSpeechProviderOrder(ENV.speechToTextProvider)
     );
     return providers.length === 1
       ? providers[0]
-      : new FallbackSpeechToTextProvider(providers);
+      : new FallbackSpeechProvider(providers);
   } catch (error) {
-    if (error instanceof SpeechToTextServiceError) throw error;
-    throw new SpeechToTextServiceError(
+    if (error instanceof SpeechServiceError) throw error;
+    throw new SpeechServiceError(
       "SERVICE_ERROR",
-      "Speech-to-text provider configuration is invalid",
+      "Speech provider configuration is invalid",
       500
     );
   }
 }
 
-export async function transcribeChunk(
-  input: SpeechToTextRequest,
-  provider?: SpeechToTextProvider
-): Promise<SpeechToTextResult> {
-  return (provider ?? createConfiguredSpeechToTextProvider()).transcribeChunk(
-    input
-  );
+export class SpeechService {
+  constructor(
+    private readonly provider: SpeechProvider = createConfiguredSpeechProvider()
+  ) {}
+
+  transcribeChunk(input: SpeechRequest) {
+    return this.provider.transcribeChunk(input);
+  }
+
+  get providerName() {
+    return this.provider.name;
+  }
+
+  get model() {
+    return this.provider.model;
+  }
+}
+
+let defaultService: SpeechService | undefined;
+
+export function transcribeChunk(
+  input: SpeechRequest,
+  provider?: SpeechProvider
+): Promise<SpeechResult> {
+  const service = provider
+    ? new SpeechService(provider)
+    : (defaultService ??= new SpeechService());
+  return service.transcribeChunk(input);
 }
 
 export const speechToTextLimits = {
   maxChunkBytes: 16 * 1024 * 1024,
   recommendedChunkDurationMs: 4000,
 } as const;
+
+/** Compatibility aliases for the pre-registry Phase 3A naming. */
+export type SpeechToTextRequest = SpeechRequest;
+export type SpeechToTextResult = SpeechResult;
+export type SpeechToTextProvider = SpeechProvider;
+export type SpeechToTextProviderFactory = SpeechProviderFactory;
+export const SpeechToTextServiceError = SpeechServiceError;
+export const SpeechToTextProviderConfigurationError =
+  SpeechProviderConfigurationError;
+export const ManusWhisperSpeechToTextProvider = ManusWhisperSpeechProvider;
+export const SpeechToTextProviderRegistry = SpeechProviderRegistry;
+export const FallbackSpeechToTextProvider = FallbackSpeechProvider;
+export const parseSpeechToTextProviderOrder = parseSpeechProviderOrder;
+export const createSpeechToTextProviderRegistry = createSpeechProviderRegistry;
+export const createConfiguredSpeechToTextProvider =
+  createConfiguredSpeechProvider;

@@ -16,8 +16,8 @@ Browser
         │     └── TranslationProviderRegistry → Provider A / Provider B / Provider C
         │           └── ManusLlmTranslationProvider (registered production provider)
         ├── services/speechToTextService
-        │     └── SpeechToTextProviderRegistry → STT A / STT B / STT C
-        │           └── ManusWhisperSpeechToTextProvider (registered production provider)
+        │     └── SpeechProvider → STT A / STT B
+        │           └── ManusWhisperSpeechProvider (registered production provider)
         └── Drizzle repositories → MySQL/TiDB schema
 ```
 
@@ -41,6 +41,6 @@ Browser
 
 ## Phase 3A — الصوت القصير والنص المترجم
 
-تضيف Phase 3A مسارًا محدودًا من `MediaRecorder` في المتصفح إلى `voice.transcribeAndTranslate` عبر tRPC، مع chunks افتراضية مدتها 4 ثوانٍ. يتحقق الخادم من الجلسة، والعضوية الفعالة، وموافقة جميع المشاركين قبل معالجة الصوت. يمر STT عبر `SpeechToTextProviderRegistry` و`FallbackSpeechToTextProvider`، بينما تمر الترجمة عبر `TranslationService` و`TranslationProviderRegistry`. لا يُخزن الصوت الخام؛ ويُحفظ النص النهائي فقط عبر مسار الاجتماع القائم عندما تسمح سياسة الموافقة. المزود المسجل فعليًا حاليًا هو `ManusWhisperSpeechToTextProvider` باسم `manus-whisper`، مع `STT_PROVIDER` لترتيب المزودين المسجلين.
+تضيف Phase 3A مسارًا محدودًا من `MediaRecorder` في المتصفح إلى `voice.transcribeAndTranslate` عبر tRPC، مع chunks افتراضية مدتها 4 ثوانٍ. يتحقق الخادم من الجلسة، والعضوية الفعالة، وموافقة جميع المشاركين قبل معالجة الصوت. يمر STT عبر `SpeechService` و`SpeechProvider` مع registry/fallback داخلي لـSTT A/B، بينما تمر الترجمة عبر `TranslationService` و`TranslationProviderRegistry`. لا يُخزن الصوت الخام؛ ويُحفظ النص النهائي فقط عبر مسار الاجتماع القائم عندما تسمح سياسة الموافقة. المزود المسجل فعليًا حاليًا هو `ManusWhisperSpeechProvider` باسم `manus-whisper`، مع `STT_PROVIDER` لترتيب المزودين المسجلين.
 
 التفاصيل التشغيلية والعقود والقيود موثقة في [`PHASE_3A.md`](./PHASE_3A.md). لا تشمل هذه المرحلة WebRTC أو الصوت متعدد المشاركين أو WhatsApp أو meeting intelligence أو أي تشغيل خلفي.
