@@ -3,7 +3,7 @@
 **Author:** Manus AI
 **Repository:** [gadm664-max/linguabridge-private](https://github.com/gadm664-max/linguabridge-private)
 **Baseline HEAD before Phase 3A:** `ca96a00` — `docs: add phase 2.1 audit report`
-**Current report state:** implementation committed and pushed إلى `main` بنجاح.
+**Current report state:** implementation committed and pushed إلى `main` بنجاح، مع Smoke Test جاهز للتشغيل عند توفر credentials حقيقية.
 
 ## 1. Executive conclusion
 
@@ -45,16 +45,18 @@
 
 ## 4. Implementation evidence
 
-| File                                         | Implemented responsibility                                                                                         |
-| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `web/server/routers/voice.ts`                | tRPC contract، invite authorization، consent gate، STT→translation chaining، safe errors، Retry-After              |
-| `web/server/services/speechToTextService.ts` | `SpeechToTextProvider` interface وManus Whisper adapter وerror mapping                                             |
-| `web/server/_core/voiceTranscription.ts`     | multipart STT request، 20-second timeout، 16MB guard، 401/403/429 mapping، malformed response handling             |
-| `web/client/src/hooks/useAudioPipeline.ts`   | getUserMedia، MediaRecorder، 4-second bounded chunks، base64، one-at-a-time backpressure، cleanup، partial preview |
-| `web/client/src/pages/Meeting.tsx`           | تشغيل/إيقاف pipeline، provisional partial region، وإضافة final original/translation فقط بعد نجاح الخادم            |
-| `web/server/routers.ts`                      | تسجيل namespace `voice` داخل `appRouter`                                                                           |
-| `web/docs/PHASE_3A.md`                       | العقد، المعمارية، الخصوصية، القيود، environment requirements                                                       |
-| `web/docs/ARCHITECTURE.md`                   | تحديث baseline architecture من Phase 2 إلى Phase 3A                                                                |
+| File                                                        | Implemented responsibility                                                                                         |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `web/server/routers/voice.ts`                               | tRPC contract، invite authorization، consent gate، STT→translation chaining، safe errors، Retry-After              |
+| `web/server/services/speechToTextService.ts`                | `SpeechToTextProvider` interface وregistry وfallback chain وManus Whisper adapter وerror mapping                   |
+| `web/server/testUtils/deterministicSpeechToTextProvider.ts` | test-only deterministic provider بلا network أو credentials                                                        |
+| `web/scripts/stt-live-smoke.ts`                             | live STT smoke test للغات ar/es/en عند توفر credentials وaudio fixture                                             |
+| `web/server/_core/voiceTranscription.ts`                    | multipart STT request، 20-second timeout، 16MB guard، 401/403/429 mapping، malformed response handling             |
+| `web/client/src/hooks/useAudioPipeline.ts`                  | getUserMedia، MediaRecorder، 4-second bounded chunks، base64، one-at-a-time backpressure، cleanup، partial preview |
+| `web/client/src/pages/Meeting.tsx`                          | تشغيل/إيقاف pipeline، provisional partial region، وإضافة final original/translation فقط بعد نجاح الخادم            |
+| `web/server/routers.ts`                                     | تسجيل namespace `voice` داخل `appRouter`                                                                           |
+| `web/docs/PHASE_3A.md`                                      | العقد، المعمارية، الخصوصية، القيود، environment requirements                                                       |
+| `web/docs/ARCHITECTURE.md`                                  | تحديث baseline architecture من Phase 2 إلى Phase 3A                                                                |
 
 لا توجد database migrations جديدة؛ لا يحتاج chunked non-persisted audio إلى schema جديد.
 
@@ -81,22 +83,23 @@
 
 تم تشغيل النتائج التالية حتى نقطة إعداد هذا التقرير:
 
-| Command                                                                                                                            | Actual result                                  |
-| ---------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
-| `pnpm check` بعد contract/UI wiring                                                                                                | **PASS**                                       |
-| `pnpm lint` بعد توسيع script ليشمل ملفات Phase 3A                                                                                  | **PASS**                                       |
-| `pnpm vitest run server/routers/voice.test.ts server/services/speechToTextService.test.ts server/routers/mobile.test.ts`           | **12 tests passed**                            |
-| `pnpm vitest run server/_core/voiceTranscription.test.ts server/services/speechToTextService.test.ts server/routers/voice.test.ts` | **16 tests passed** |
-| `pnpm test` | **PASS — 33 test files / 88 tests passed** |
-| `pnpm build` | **PASS**؛ مع تحذيرات analytics placeholders وbundle أكبر من 500kB كما في baseline |
-| `pnpm audit --prod` | **PASS — No known vulnerabilities found** |
-| `pnpm exec drizzle-kit check` | **BLOCKED/NOT RUNNABLE في sandbox** لأن `DATABASE_URL` غير مضبوط؛ لا توجد schema changes أو migrations في Phase 3A |
+| Command                                                                                                                            | Actual result                                                                                                      |
+| ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `pnpm check` بعد contract/UI wiring                                                                                                | **PASS**                                                                                                           |
+| `pnpm lint` بعد توسيع script ليشمل ملفات Phase 3A                                                                                  | **PASS**                                                                                                           |
+| `pnpm vitest run server/routers/voice.test.ts server/services/speechToTextService.test.ts server/routers/mobile.test.ts`           | **12 tests passed**                                                                                                |
+| `pnpm vitest run server/_core/voiceTranscription.test.ts server/services/speechToTextService.test.ts server/routers/voice.test.ts` | **16 tests passed**                                                                                                |
+| `pnpm test`                                                                                                                        | **PASS — 33 test files / 97 tests passed**                                                                         |
+| `pnpm stt:smoke`                                                                                                                   | **PASS with explicit skip — `REAL PROVIDER TEST = NOT RUN — CREDENTIALS NOT CONFIGURED`**                          |
+| `pnpm build`                                                                                                                       | **PASS**؛ مع تحذيرات analytics placeholders وbundle أكبر من 500kB كما في baseline                                  |
+| `pnpm audit --prod`                                                                                                                | **PASS — No known vulnerabilities found**                                                                          |
+| `pnpm exec drizzle-kit check`                                                                                                      | **BLOCKED/NOT RUNNABLE في sandbox** لأن `DATABASE_URL` غير مضبوط؛ لا توجد schema changes أو migrations في Phase 3A |
 
 ظهرت أثناء التطوير ملاحظة اختبار غير مانعة: تهيئة OAuth تطبع تحذير `OAUTH_SERVER_URL is not configured` في test environment. هذا لا يفشل الاختبارات، ولا يكشف secret.
 
 ## 8. Live provider constraint
 
-لم يُنفذ live STT provider call في الاختبارات؛ الاختبارات تستخدم mocks deterministic حتى لا تعتمد على quota أو credentials خارجية ولا ترسل صوتًا حقيقيًا. التشغيل الفعلي يحتاج في بيئة الخادم إلى `BUILT_IN_FORGE_API_URL` و`BUILT_IN_FORGE_API_KEY`، إضافة إلى `DATABASE_URL` وsession/auth configuration الخاصة بالتطبيق للاختبار داخل اجتماع حقيقي. لا يحتاج العميل إلى هذه الأسرار.
+لم يُنفذ live STT provider call في الاختبارات؛ الاختبارات تستخدم `DeterministicSpeechToTextProvider` داخل test utilities حتى لا تعتمد على quota أو credentials خارجية ولا ترسل صوتًا حقيقيًا. السكربت `pnpm stt:smoke` جاهز ويوقف التنفيذ بأمان عند غياب `BUILT_IN_FORGE_API_URL` أو `BUILT_IN_FORGE_API_KEY`، كما يتطلب `STT_SMOKE_AUDIO_FILE` حقيقيًا عند توفرهما. التشغيل الفعلي يحتاج في بيئة الخادم إلى credentials STT الحقيقية، إضافة إلى `DATABASE_URL` وsession/auth configuration الخاصة بالتطبيق للاختبار داخل اجتماع حقيقي. لا يحتاج العميل إلى هذه الأسرار.
 
 ## 9. Known limitations
 
@@ -106,7 +109,7 @@
 
 **GitHub repository:** [https://github.com/gadm664-max/linguabridge-private](https://github.com/gadm664-max/linguabridge-private)
 
-تم تشغيل التحقق النهائي بنجاح قبل الالتزام. commit المنشور هو `4afeb109f1ed7761d15bddaf14c4fe7bf2ad1783` (`feat: implement phase 3A microphone transcription pipeline`) على فرع `main`.
+تم تشغيل التحقق النهائي بنجاح قبل الالتزام. commit التنفيذ الخاص بالـprovider registries هو `8a9130fb20f31827ebb0a834c3e4d3d15dc1d74f`، وcommit deterministic STT وLive Smoke Test هو `95ea3502c976bd51d8c8115992eb18d4059026d0`، وكلاهما منشوران على فرع `main`.
 
 ## References
 
