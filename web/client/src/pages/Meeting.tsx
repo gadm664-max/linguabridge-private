@@ -17,6 +17,11 @@ import {
   useAudioPipeline,
   type AudioPipelineResult,
 } from "@/hooks/useAudioPipeline";
+import {
+  getMeetingInviteRecoveryPath,
+  meetingInviteNotFoundMessage,
+  shouldRecoverFromMeetingInviteError,
+} from "@/lib/meetingRecovery";
 import { trpc } from "@/lib/trpc";
 import { buildMeetingInviteShare } from "@/lib/whatsapp";
 import {
@@ -41,7 +46,7 @@ import {
   VolumeX,
   X,
 } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useLocation, useRoute } from "wouter";
 import {
@@ -246,6 +251,16 @@ export default function Meeting() {
     { inviteCode },
     { enabled: Boolean(user && validInviteCode) }
   );
+  useEffect(() => {
+    if (
+      !validInviteCode ||
+      !shouldRecoverFromMeetingInviteError(meetingDetails.error?.data?.code)
+    ) {
+      return;
+    }
+    toast.error(meetingInviteNotFoundMessage);
+    setLocation(getMeetingInviteRecoveryPath());
+  }, [meetingDetails.error?.data?.code, setLocation, validInviteCode]);
   const inviteSharingEnabled =
     meetingDetails.data?.inviteSharingEnabled ?? requestedInviteSharingEnabled;
   const translateText = trpc.translation.translateText.useMutation();
