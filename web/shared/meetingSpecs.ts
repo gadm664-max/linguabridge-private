@@ -1,10 +1,12 @@
 export {
   defaultVoiceRate,
+  getLiveTranscriptionControlCopy,
   getLiveTranscriptionStatus,
   getMicrophoneMuteControlCopy,
   meetingPrivacyDefaults,
   meetingStateLabels,
   microphoneMuteControlCopy,
+  liveTranscriptionControlCopy,
   liveTranscriptionStatusCopy,
   defaultVoiceProfile,
   getInviteSharingSessionParam,

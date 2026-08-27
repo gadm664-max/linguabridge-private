@@ -50,6 +50,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useLocation, useRoute } from "wouter";
 import {
+  getLiveTranscriptionControlCopy,
   getLiveTranscriptionStatus,
   getMicrophoneMuteControlCopy,
 } from "@shared/meetingSpecs";
@@ -324,6 +325,9 @@ export default function Meeting() {
     onFinalTranscript: handlePipelineFinal,
   });
   const liveTranscriptionStatus = getLiveTranscriptionStatus(
+    liveAudio.isProcessing ? "processing" : recording ? "listening" : "idle"
+  );
+  const liveTranscriptionControl = getLiveTranscriptionControlCopy(
     liveAudio.isProcessing ? "processing" : recording ? "listening" : "idle"
   );
   const toggleLiveSpeech = () => {
@@ -908,8 +912,8 @@ export default function Meeting() {
               <Headphones className="h-4.5 w-4.5" />
             </ControlButton>
             <ControlButton
-              label={recording ? "إيقاف النص الحي" : "تشغيل النص الحي"}
-              active={recording}
+              label={liveTranscriptionControl.label}
+              active={liveTranscriptionControl.active}
               onClick={toggleLiveSpeech}
             >
               {recording ? (

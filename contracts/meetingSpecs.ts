@@ -108,3 +108,13 @@ export const liveTranscriptionStatusCopy: Record<LiveTranscriptionState, string>
 export function getLiveTranscriptionStatus(state: LiveTranscriptionState) {
   return liveTranscriptionStatusCopy[state];
 }
+
+export const liveTranscriptionControlCopy: Record<LiveTranscriptionState, { label: string; active: boolean }> = {
+  idle: { label: "تشغيل النسخ الحي", active: false },
+  listening: { label: "إيقاف النسخ الحي", active: true },
+  processing: { label: "جارٍ النسخ والترجمة", active: false },
+};
+
+export function getLiveTranscriptionControlCopy(state: LiveTranscriptionState) {
+  return liveTranscriptionControlCopy[state];
+}

@@ -87,3 +87,34 @@ export const meetingStateLabels: Record<MeetingStatus, string> = {
   active: "نشطة",
   ended: "انتهت",
 };
+
+export const microphoneMuteControlCopy = {
+  unmuted: { label: "كتم الصوت", active: false },
+  muted: { label: "إلغاء كتم الصوت", active: true },
+} as const;
+
+export function getMicrophoneMuteControlCopy(muted: boolean) {
+  return microphoneMuteControlCopy[muted ? "muted" : "unmuted"];
+}
+
+export type LiveTranscriptionState = "idle" | "listening" | "processing";
+
+export const liveTranscriptionStatusCopy: Record<LiveTranscriptionState, string> = {
+  idle: "النص الحي متوقف",
+  listening: "النص الحي يعمل",
+  processing: "جارٍ النسخ والترجمة…",
+};
+
+export function getLiveTranscriptionStatus(state: LiveTranscriptionState) {
+  return liveTranscriptionStatusCopy[state];
+}
+
+export const liveTranscriptionControlCopy: Record<LiveTranscriptionState, { label: string; active: boolean }> = {
+  idle: { label: "تشغيل النسخ الحي", active: false },
+  listening: { label: "إيقاف النسخ الحي", active: true },
+  processing: { label: "جارٍ النسخ والترجمة", active: false },
+};
+
+export function getLiveTranscriptionControlCopy(state: LiveTranscriptionState) {
+  return liveTranscriptionControlCopy[state];
+}
