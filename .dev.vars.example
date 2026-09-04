@@ -1,0 +1,33 @@
+# ---- Required ---------------------------------------------------------------
+SESSION_SECRET=change-me-to-a-long-random-string
+
+# Public origin for invitation links (optional — auto-detected from the request when omitted)
+# APP_BASE_URL=https://meet.example.com
+
+# ---- Phase 2: realtime media (LiveKit Cloud or self-hosted) ------------------
+# Without these the room works as a "lobby" (presence + preferences), no audio/video.
+# LIVEKIT_URL=wss://your-project.livekit.cloud
+# LIVEKIT_API_KEY=APIxxxxxxxx
+# LIVEKIT_API_SECRET=xxxxxxxxxxxxxxxx
+
+# ---- Phase 3: speech-to-text (Deepgram nova-3) -----------------------------
+# The key stays server-side; browsers receive 10-minute scoped tokens via /v1/auth/grant.
+# DEEPGRAM_API_KEY=xxxxxxxxxxxxxxxx
+
+# ---- Phase 4: translation (Google Gemini) -------------------------------------
+# TRANSLATION_PROVIDER=gemini
+# GEMINI_API_KEY=your-google-ai-studio-key
+# GEMINI_MODEL=gemini-2.5-flash
+# GEMINI_BASE_URL=https://generativelanguage.googleapis.com/v1beta
+
+# Optional legacy provider:
+# TRANSLATION_PROVIDER=openai
+# OPENAI_API_KEY=sk-...
+# OPENAI_BASE_URL=https://api.openai.com/v1      # or any compatible gateway
+# OPENAI_MODEL=gpt-5-mini
+
+# ---- Phase 6: translated voice (TTS) -----------------------------------------
+# TTS_PROVIDER=openai          # openai | elevenlabs
+# TTS_API_KEY=...              # falls back to OPENAI_API_KEY for openai
+# TTS_BASE_URL=                # optional, openai only
+# TTS_MODEL=gpt-4o-mini-tts    # or eleven_flash_v2_5

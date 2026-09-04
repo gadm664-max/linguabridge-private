@@ -1,0 +1,20 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "webapp",
+  "compatibility_date": "2026-08-25",
+  "pages_build_output_dir": "./dist",
+  "compatibility_flags": ["nodejs_compat"],
+  // Non-secret configuration. Secrets (SESSION_SECRET, DEEPGRAM_API_KEY, LIVEKIT_*) go in
+  // .dev.vars locally and `wrangler pages secret put` in production. NEVER put them here.
+  "vars": {
+    "APP_NAME": "LinguaBridge",
+    "APP_ENV": "development"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "webapp-production",
+      "database_id": "local-dev-placeholder"
+    }
+  ]
+}
