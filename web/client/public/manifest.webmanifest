@@ -1,0 +1,11 @@
+{
+  "name": "LinguaBridge Meetings",
+  "short_name": "LinguaBridge",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7f7fb",
+  "theme_color": "#4f46e5",
+  "description": "منصة اجتماعات وترجمة فورية متعددة اللغات."
+}

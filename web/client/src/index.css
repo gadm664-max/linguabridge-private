@@ -1,0 +1,72 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+:root {
+  --background: #f7f7fb;
+  --foreground: #172033;
+  --card: #ffffff;
+  --card-foreground: #172033;
+  --popover: #ffffff;
+  --popover-foreground: #172033;
+  --primary: #4f46e5;
+  --primary-foreground: #ffffff;
+  --secondary: #eef0ff;
+  --secondary-foreground: #3730a3;
+  --muted: #f0f1f6;
+  --muted-foreground: #70778a;
+  --accent: #e9eafe;
+  --accent-foreground: #3730a3;
+  --destructive: #df3e64;
+  --border: #e7e9f1;
+  --input: #e7e9f1;
+  --ring: #6366f1;
+  --radius: 1rem;
+}
+
+* { border-color: var(--border); }
+
+html { min-width: 320px; background: var(--background); }
+
+body {
+  min-height: 100vh;
+  color: var(--foreground);
+  background:
+    radial-gradient(circle at 10% -5%, rgba(139, 92, 246, 0.10), transparent 27rem),
+    radial-gradient(circle at 90% 8%, rgba(45, 212, 191, 0.08), transparent 24rem),
+    var(--background);
+  font-family: "IBM Plex Sans Arabic", "DM Sans", sans-serif;
+  text-rendering: optimizeLegibility;
+}
+
+button, input, textarea, select { font: inherit; }
+
+::selection { background: rgba(99, 102, 241, 0.18); color: #312e81; }
+
+.font-display { font-family: "DM Sans", "IBM Plex Sans Arabic", sans-serif; }
+.dir-ltr { direction: ltr; text-align: left; }
+.dir-rtl { direction: rtl; text-align: right; }
+
+.mesh-surface {
+  background:
+    radial-gradient(circle at 14% 16%, rgba(129, 140, 248, .27), transparent 29%),
+    radial-gradient(circle at 84% 5%, rgba(167, 139, 250, .24), transparent 25%),
+    linear-gradient(135deg, #161b47 0%, #26295f 48%, #493077 100%);
+}
+
+.glass-panel {
+  background: rgba(255, 255, 255, 0.76);
+  border: 1px solid rgba(255, 255, 255, 0.70);
+  box-shadow: 0 18px 50px -32px rgba(28, 35, 76, 0.35);
+  backdrop-filter: blur(18px);
+}
+
+.soft-scrollbar::-webkit-scrollbar { width: 7px; height: 7px; }
+.soft-scrollbar::-webkit-scrollbar-thumb { background: #d6d8e5; border-radius: 999px; }
+.soft-scrollbar::-webkit-scrollbar-track { background: transparent; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .hover-lift { transition: transform 180ms cubic-bezier(0.23, 1, 0.32, 1), box-shadow 180ms cubic-bezier(0.23, 1, 0.32, 1); }
+  .hover-lift:hover { transform: translateY(-2px); box-shadow: 0 18px 38px -24px rgba(53, 63, 120, .42); }
+  button { transition: transform 150ms cubic-bezier(0.23, 1, 0.32, 1), box-shadow 150ms cubic-bezier(0.23, 1, 0.32, 1), background-color 150ms ease, border-color 150ms ease; }
+  button:active { transform: scale(.97); }
+}

@@ -1,0 +1,1 @@
+ALTER TABLE `meetings` ADD `inviteSharingEnabled` boolean DEFAULT true NOT NULL;

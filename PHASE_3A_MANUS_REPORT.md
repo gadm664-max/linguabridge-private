@@ -1,0 +1,138 @@
+# LINGUA X — Manus Report for Phase 3A
+
+**Author:** Manus AI
+**Repository:** [gadm664-max/linguabridge-private](https://github.com/gadm664-max/linguabridge-private)
+**Baseline HEAD before Phase 3A:** `ca96a00` — `docs: add phase 2.1 audit report`
+**Current report state:** Phase 3A.1 implementation committed and pushed إلى `main`، مع بنية STT canonical مطبقة ومتحقق منها.
+
+## 1. Executive conclusion
+
+بدأ تنفيذ Phase 3A بعد التفويض الصريح المحدد لهذا المسار:
+
+> **Microphone → Audio Stream → Speech-to-Text Provider → Partial Transcript → Final Transcript → Translation Engine**
+
+أصبحت هناك implementation فعلية تشمل التقاط الميكروفون عبر `MediaRecorder`، إرسال chunks قصيرة إلى tRPC، تحقق المصادقة وعضوية الاجتماع والموافقة، طبقة STT قابلة للاستبدال، partial preview اختياري، final transcript خادمي، وتمرير النص النهائي إلى `TranslationService`. لا يُخزن الصوت الخام افتراضيًا.
+
+لا تشمل هذه المرحلة WebRTC أو الصوت متعدد المشاركين أو WhatsApp أو meeting intelligence أو background jobs.
+
+## 2. Provider choices
+
+| Capability              | Selected implementation                                                                                                | Credential location                                            |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| Speech-to-text          | `ManusWhisperSpeechProvider` خلف `SpeechProvider` و`SpeechService`، باستخدام `whisper-1` عبر `v1/audio/transcriptions` | Server-side `BUILT_IN_FORGE_API_URL` و`BUILT_IN_FORGE_API_KEY` |
+| Translation             | Existing vendor-neutral `TranslationService` → `TranslationProvider` → `ManusLlmTranslationProvider`                   | Server-side built-in gateway credentials                       |
+| Browser partial preview | Native `SpeechRecognition` / `webkitSpeechRecognition` when available; preview only وليس مصدر final                    | Browser permission فقط، ولا يحتاج API key                      |
+
+لا توجد مفاتيح أو passwords أو session secrets أو raw audio في Git أو client bundle أو logs.
+
+## 3. API endpoint and contract
+
+العقد المنشأ هو tRPC mutation التالي:
+
+`POST /api/trpc/voice.transcribeAndTranslate`
+
+ويُستهلك typed عبر `trpc.voice.transcribeAndTranslate.useMutation()`.
+
+| Input            | Rule                                                                           |
+| ---------------- | ------------------------------------------------------------------------------ |
+| `inviteCode`     | 4–16 characters، normalized uppercase                                          |
+| `audioBase64`    | 4–8,000,000 characters تقريبًا، مع حد buffer فعلي 16MB                         |
+| `mimeType`       | `audio/webm`, `audio/mp4`, `audio/m4a`, `audio/mpeg`, `audio/ogg`, `audio/wav` |
+| `sourceLanguage` | 2–16 characters                                                                |
+| `targetLanguage` | 2–16 characters                                                                |
+
+النتيجة typed وتحتوي `originalText`, `translatedText`, `detectedLanguage`, `durationSeconds`, `segments`, `provider`, و`model`. يرفض الخادم الطلب قبل STT إذا لم يكن المستخدم authenticated، أو ليس active participant، أو لم تكتمل موافقة جميع المشاركين النشطين.
+
+## 4. Implementation evidence
+
+| File                                                        | Implemented responsibility                                                                                         |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `web/server/routers/voice.ts`                               | tRPC contract، invite authorization، consent gate، STT→translation chaining، safe errors، Retry-After              |
+| `web/server/services/speechToTextService.ts`                | `SpeechProvider` interface و`SpeechService` وregistry وfallback chain وManus Whisper adapter وerror mapping        |
+| `web/server/testUtils/deterministicSpeechToTextProvider.ts` | test-only deterministic provider بلا network أو credentials                                                        |
+| `web/scripts/stt-live-smoke.ts`                             | live STT smoke test للغات ar/es/en عند توفر credentials وaudio fixture                                             |
+| `web/server/_core/voiceTranscription.ts`                    | multipart STT request، 20-second timeout، 16MB guard، 401/403/429 mapping، malformed response handling             |
+| `web/client/src/hooks/useAudioPipeline.ts`                  | getUserMedia، MediaRecorder، 4-second bounded chunks، base64، one-at-a-time backpressure، cleanup، partial preview |
+| `web/client/src/pages/Meeting.tsx`                          | تشغيل/إيقاف pipeline، provisional partial region، وإضافة final original/translation فقط بعد نجاح الخادم            |
+| `web/server/routers.ts`                                     | تسجيل namespace `voice` داخل `appRouter`                                                                           |
+| `web/docs/PHASE_3A.md`                                      | العقد، المعمارية، الخصوصية، القيود، environment requirements                                                       |
+| `web/docs/ARCHITECTURE.md`                                  | تحديث baseline architecture من Phase 2 إلى Phase 3A                                                                |
+
+لا توجد database migrations جديدة؛ لا يحتاج chunked non-persisted audio إلى schema جديد.
+
+## 5. Privacy and retention policy
+
+الصوت الخام يُرسل في الذاكرة إلى endpoint الخادمي ولا يُرفع إلى S3 ولا يُحفظ في database. لا يكتب client hook audio bytes أو transcript content إلى console. بعد final response، تستطيع Meeting استخدام `meetings.saveSegment` لحفظ final text فقط، وبشرط أن تُثبت سياسة الموافقة الجماعية السماح بالحفظ. معالجة الصوت نفسها محمية بالموافقة نفسها اتساقًا مع المسار الصوتي القائم في `mobile.ts`.
+
+## 6. Error semantics
+
+يحوّل STT provider الأخطاء إلى رسائل تطبيقية دون raw upstream body أو exception details. الحالات المغطاة هي empty/oversized/invalid audio، authentication failure 401/403، rate limit 429، timeout، network failure، malformed JSON، malformed response shape، وفشل الترجمة. عند إرسال upstream لـ`Retry-After`، يمرر الخادم قيمة رقمية بالثواني في header نفسه.
+
+| Failure                      | Application behavior                   |
+| ---------------------------- | -------------------------------------- |
+| Invalid Base64               | tRPC `BAD_REQUEST`                     |
+| Audio >16MB                  | `PAYLOAD_TOO_LARGE`                    |
+| Missing participant/meeting  | `NOT_FOUND` أو `FORBIDDEN`             |
+| Consent incomplete           | `PRECONDITION_FAILED` قبل STT          |
+| STT 429                      | `TOO_MANY_REQUESTS` مع `Retry-After`   |
+| STT timeout                  | `TIMEOUT`                              |
+| STT network/provider failure | `SERVICE_UNAVAILABLE` أو `BAD_GATEWAY` |
+| Translation provider failure | safe `BAD_GATEWAY`/service code        |
+
+## 7. Verification record
+
+تم تشغيل النتائج التالية حتى نقطة إعداد هذا التقرير:
+
+| Command                                                                                                                            | Actual result                                                                                                      |
+| ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `pnpm check` بعد contract/UI wiring                                                                                                | **PASS**                                                                                                           |
+| `pnpm lint` بعد توسيع script ليشمل ملفات Phase 3A                                                                                  | **PASS**                                                                                                           |
+| `pnpm vitest run server/routers/voice.test.ts server/services/speechToTextService.test.ts server/routers/mobile.test.ts`           | **12 tests passed**                                                                                                |
+| `pnpm vitest run server/_core/voiceTranscription.test.ts server/services/speechToTextService.test.ts server/routers/voice.test.ts` | **16 tests passed**                                                                                                |
+| `pnpm test`                                                                                                                        | **PASS — 33 test files / 97 tests passed**                                                                         |
+| `pnpm stt:smoke`                                                                                                                   | **PASS with explicit skip — `REAL PROVIDER TEST = NOT RUN — CREDENTIALS NOT CONFIGURED`**                          |
+| `pnpm build`                                                                                                                       | **PASS**؛ مع تحذيرات analytics placeholders وbundle أكبر من 500kB كما في baseline                                  |
+| `pnpm audit --prod`                                                                                                                | **PASS — No known vulnerabilities found**                                                                          |
+| `pnpm exec drizzle-kit check`                                                                                                      | **BLOCKED/NOT RUNNABLE في sandbox** لأن `DATABASE_URL` غير مضبوط؛ لا توجد schema changes أو migrations في Phase 3A |
+
+ظهرت أثناء التطوير ملاحظة اختبار غير مانعة: تهيئة OAuth تطبع تحذير `OAUTH_SERVER_URL is not configured` في test environment. هذا لا يفشل الاختبارات، ولا يكشف secret.
+
+## 8. Live provider constraint
+
+لم يُنفذ live STT provider call في الاختبارات؛ الاختبارات تستخدم `DeterministicSpeechToTextProvider` داخل test utilities حتى لا تعتمد على quota أو credentials خارجية ولا ترسل صوتًا حقيقيًا. السكربت `pnpm stt:smoke` جاهز ويوقف التنفيذ بأمان عند غياب `BUILT_IN_FORGE_API_URL` أو `BUILT_IN_FORGE_API_KEY`، كما يتطلب `STT_SMOKE_AUDIO_FILE` حقيقيًا عند توفرهما. التشغيل الفعلي يحتاج في بيئة الخادم إلى credentials STT الحقيقية، إضافة إلى `DATABASE_URL` وsession/auth configuration الخاصة بالتطبيق للاختبار داخل اجتماع حقيقي. لا يحتاج العميل إلى هذه الأسرار.
+
+## 9. Known limitations
+
+الـpartial transcript ليس partial result من Whisper؛ هو preview محلي اختياري من Web Speech API، بينما final transcript مصدره STT الخادمي فقط. بعض المتصفحات لا توفر `SpeechRecognition` أو لا تدعم صيغة MIME نفسها، وفي هذه الحالة يستمر server STT عند توفر `MediaRecorder` لكن قد لا يظهر partial preview. المسار يرسل chunks قصيرة متتابعة عبر tRPC وليس WebRTC، ولا يعالج صوت مشاركين آخرين.
+
+## 10. Phase 3A.1 real provider smoke test
+
+طُبّقت تعليمات Phase 3A.1 دون إعادة تصميم Phase 3A ودون بدء Phase 3B. أضيف `pnpm stt:smoke` ليستخدم المزود المهيأ فعليًا فقط، وليس `DeterministicSpeechToTextProvider`. يدعم السكربت fixture مستقلًا لكل لغة عبر `STT_SMOKE_AUDIO_AR` و`STT_SMOKE_AUDIO_ES` و`STT_SMOKE_AUDIO_EN`، أو `STT_SMOKE_AUDIO_FILE` كمسار مشترك صريح، مع `STT_SMOKE_MIME_TYPE` الاختياري.
+
+في بيئة التنفيذ الحالية كانت النتيجة الفعلية:
+
+> `REAL PROVIDER TEST = NOT RUN — CREDENTIALS NOT CONFIGURED`
+
+لم تُنشأ أو تُلتزم أي audio fixtures لأن لا توجد recordings غير حساسة مناسبة ولأن credentials غير متاحة. لم تُخترع نتائج عربية أو إسبانية أو إنجليزية، ولم تُحسب latency أو transcript حقيقي. لذلك لم يُنفذ controlled Arabic → Spanish end-to-end chain، إذ يشترط نجاح STT الحقيقي أولًا.
+
+| Phase 3A.1 requirement                    | Actual status                                                                                               |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Real STT provider call                    | **NOT RUN — CREDENTIALS NOT CONFIGURED**                                                                    |
+| Arabic / Spanish / English live results   | Not available; no real request executed                                                                     |
+| First partial latency                     | `null`؛ المزود الحالي chunk-based وليس streaming events                                                     |
+| Final latency / model / detected language | Not available until real provider run                                                                       |
+| Arabic → Spanish chain                    | Skipped because real STT did not succeed                                                                    |
+| Database verification                     | `DATABASE VERIFICATION = NOT RUN — DATABASE_URL NOT CONFIGURED`                                             |
+| Security                                  | Credentials remain server-side; no values printed, committed, or exposed to browser; no raw audio committed |
+
+## 11. GitHub and release status
+
+**GitHub repository:** [https://github.com/gadm664-max/linguabridge-private](https://github.com/gadm664-max/linguabridge-private)
+
+تم تشغيل التحقق النهائي بنجاح قبل الالتزام. commit التنفيذ الخاص بالـprovider registries هو `8a9130fb20f31827ebb0a834c3e4d3d15dc1d74f`، وcommit deterministic STT وLive Smoke Test هو `95ea3502c976bd51d8c8115992eb18d4059026d0`، وcommit توسيع Phase 3A.1 Smoke Test هو `9fd2e6f7c0946c6e5b6d7387ae3555479a412e97`، وcommit تطبيق بنية `SpeechService → SpeechProvider → STT A/B` هو `333ddb99e7272130ba50a5dacebe51a7169429e1`. كلها منشورة على فرع `main`.
+
+## References
+
+[1]: https://github.com/gadm664-max/linguabridge-private "LinguaBridge private repository"
+[2]: https://developer.mozilla.org/en-US/docs/Web/API/MediaRecorder "MDN MediaRecorder API"
+[3]: https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia "MDN getUserMedia API"
