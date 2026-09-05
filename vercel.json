@@ -1,6 +1,7 @@
 {
   "version": 2,
-  "rewrites": [
-    { "source": "/((?!static/).*)", "destination": "/api" }
+  "routes": [
+    { "src": "/static/(.*)", "continue": true },
+    { "src": "/(.*)", "dest": "/api/$1" }
   ]
 }
